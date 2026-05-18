@@ -1,10 +1,13 @@
 plugins {
     id 'net.neoforged.moddev' version '1.0.1'
+    id 'io.github.goooler.shadow' version '8.1.8'
 }
 
 configurations {
     luajRuntime
+    shade
     implementation.extendsFrom(luajRuntime)
+    implementation.extendsFrom(shade)
 }
 
 repositories {
@@ -116,7 +119,24 @@ dependencies {
     runtimeOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_version}")
 
     luajRuntime("org.luaj:luaj-jse:3.0.1")
-    jarJar("org.luaj:luaj-jse:3.0.1")
+    shade("org.luaj:luaj-jse:3.0.1")
+}
+
+jar {
+    archiveClassifier.set('dev')
+}
+
+shadowJar {
+    archiveClassifier.set('')
+    configurations = [project.configurations.shade]
+    relocate 'org.luaj', 'dev.devce.rocketnautics.shaded.luaj'
+    mergeServiceFiles()
+}
+
+tasks.named('jar') { finalizedBy shadowJar }
+
+artifacts {
+    archives shadowJar
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
