@@ -2,6 +2,7 @@ package dev.devce.rocketnautics;
 
 import com.mojang.logging.LogUtils;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
+import dev.devce.rocketnautics.compat.computercraft.ComputerCraftCompat;
 import dev.devce.rocketnautics.content.blocks.LinkedSignalHandler;
 import dev.devce.rocketnautics.content.commands.GravityCommand;
 import dev.devce.rocketnautics.content.commands.JetpackCommand;
@@ -17,6 +18,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -29,7 +31,7 @@ import org.slf4j.Logger;
 
 /**
  * Main class for the Cosmonautics (RocketNautics) mod.
- * This class handles mod initialization, configuration registration, 
+ * This class handles mod initialization, configuration registration,
  * and various system setups for physics, commands, and registry.
  */
 @Mod(RocketNautics.MODID)
@@ -43,25 +45,17 @@ public class RocketNautics {
             (RocketRegistrate) new RocketRegistrate(path(MODID), MODID).defaultCreativeTab((ResourceKey<CreativeModeTab>) null));
     /**
      * Constructor for the mod. Performs initial registration of configs, blocks, and handlers.
-     * 
+     *
      * @param modEventBus The event bus for mod-specific events.
      * @param modContainer The container for this mod instance.
      */
     public RocketNautics(IEventBus modEventBus, net.neoforged.fml.ModContainer modContainer) {
         LOGGER.info("Initializing Cosmonautics!");
-        
+
         // Register mod configurations
         modContainer.registerConfig(ModConfig.Type.SERVER, (net.neoforged.fml.config.IConfigSpec) RocketConfig.SERVER_SPEC);
         modContainer.registerConfig(ModConfig.Type.CLIENT, (net.neoforged.fml.config.IConfigSpec) RocketConfig.CLIENT_SPEC);
 
-        // Attempt to expand Sable altitude limits to allow for high-altitude flight
-        try {
-            dev.ryanhcode.sable.SableConfig.SUB_LEVEL_REMOVE_MIN.set(-1000000.0);
-            dev.ryanhcode.sable.SableConfig.SUB_LEVEL_REMOVE_MAX.set(1000000.0);
-            LOGGER.info("Successfully expanded Sable altitude limits for Cosmonautics.");
-        } catch (Exception e) {
-            LOGGER.error("Failed to override SableConfig: {}", e.getMessage());
-        }
         modEventBus.addListener(RocketDatagen::gatherData);
 
         // Register registries
@@ -87,11 +81,14 @@ public class RocketNautics {
 
         modEventBus.addListener(this::setup);
         NeoForge.EVENT_BUS.register(this);
-        
+
         // Initialize physics and game mechanics handlers
         GlobalSpacePhysicsHandler.init();
         dev.devce.rocketnautics.content.physics.AsteroidSpawner.init();
         dev.devce.rocketnautics.content.physics.SpaceTransitionHandler.init();
+
+        if (ModList.get().isLoaded("computercraft"))
+            ComputerCraftCompat.init();
     }
 
     public static ResourceLocation path(final String path) {
@@ -107,16 +104,7 @@ public class RocketNautics {
      */
     private void setup(final FMLCommonSetupEvent event) {
         LOGGER.info("Cosmonautics Setup");
-        // Ensure Sable altitude limits are set even if constructor override was too early
-        event.enqueueWork(() -> {
-            try {
-                dev.ryanhcode.sable.SableConfig.SUB_LEVEL_REMOVE_MIN.set(-1000000.0);
-                dev.ryanhcode.sable.SableConfig.SUB_LEVEL_REMOVE_MAX.set(1000000.0);
-                LOGGER.info("Successfully expanded Sable altitude limits via enqueueWork.");
-            } catch (Exception e) {
-                LOGGER.error("Failed to set SableConfig in enqueueWork: {}", e.getMessage());
-            }
-        });
+        // Sable altitude limits override has been moved to onServerAboutToStart event to prevent early-access exceptions
     }
 
     /**
@@ -130,6 +118,17 @@ public class RocketNautics {
         dev.devce.rocketnautics.content.commands.AsteroidCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.BreakBarrierCommand.register(event.getDispatcher());
         TimescaleCommand.register(event.getDispatcher());
+    }
+
+    @SubscribeEvent
+    public void onServerAboutToStart(net.neoforged.neoforge.event.server.ServerAboutToStartEvent event) {
+        try {
+            dev.ryanhcode.sable.SableConfig.SUB_LEVEL_REMOVE_MIN.set(-1000000.0);
+            dev.ryanhcode.sable.SableConfig.SUB_LEVEL_REMOVE_MAX.set(1000000.0);
+            LOGGER.info("Successfully expanded Sable altitude limits in ServerAboutToStartEvent.");
+        } catch (Exception e) {
+            LOGGER.error("Failed to override SableConfig in ServerAboutToStartEvent: {}", e.getMessage());
+        }
     }
     @SubscribeEvent
     public void onLevelTick(LevelTickEvent.Post event) {

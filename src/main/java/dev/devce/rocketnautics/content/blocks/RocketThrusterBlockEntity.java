@@ -605,7 +605,6 @@ public class RocketThrusterBlockEntity extends SmartBlockEntity implements Block
 
     private java.util.UUID uniqueId = java.util.UUID.randomUUID();
 
-    @Override
     public java.util.UUID getUniqueId() {
         return uniqueId;
     }
