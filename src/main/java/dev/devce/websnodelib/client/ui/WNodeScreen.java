@@ -68,7 +68,9 @@ public class WNodeScreen extends Screen {
     private final java.util.List<NodeParticle> editorParticles = new java.util.ArrayList<>();
     
     private boolean isSearching = false;
+    private boolean isDraggingSearchScroll = false;
     private String searchQuery = "";
+    private dev.devce.websnodelib.api.elements.WTextField searchField = new dev.devce.websnodelib.api.elements.WTextField(120).setRenderBackground(false).setTextColor(0xFF00FF88).setCursorColor(0xFF00FF88);
     private int menuX, menuY;
     private List<SearchItem> filteredItemsList = new ArrayList<>();
     private int searchScrollOffset = 0;
@@ -307,11 +309,13 @@ public class WNodeScreen extends Screen {
         renderBreadcrumbs(graphics);
         // AI FIX/ADD STOP
         
-        renderMinimap(graphics);
+        renderMinimap(graphics, mouseX, mouseY);
     }
 
     // AI FIX/ADD START
     private void renderBreadcrumbs(GuiGraphics graphics) {
+        graphics.pose().pushPose();
+        graphics.pose().translate(0, 0, 3000);
         java.util.List<String> path = new java.util.ArrayList<>();
         WNodeScreen current = this;
         while (current != null) {
@@ -337,6 +341,7 @@ public class WNodeScreen extends Screen {
                 x += font.width(" / ");
             }
         }
+        graphics.pose().popPose();
     }
     // AI FIX/ADD STOP
 
@@ -348,16 +353,22 @@ public class WNodeScreen extends Screen {
         return (mouseY - height / 2.0) / zoom + height / 2.0 - panY;
     }
 
-    private void renderMinimap(GuiGraphics graphics) {
+    private void renderMinimap(GuiGraphics graphics, int mouseX, int mouseY) {
         int mw = 100;
         int mh = 70;
         int mx = width - mw - 10;
         int my = height - mh - 10;
         
+        boolean isHovered = mouseX >= mx && mouseX <= mx + mw && mouseY >= my && mouseY <= my + mh;
+        int alphaBorder = isHovered ? 0xFF : 0x33;
+        int alphaBg     = isHovered ? 0xCC : 0x28;
+        int alphaNode   = isHovered ? 0xAA : 0x22;
+        int alphaVp     = isHovered ? 0xFF : 0x33;
+        
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 8000);
-        graphics.fill(mx - 1, my - 1, mx + mw + 1, my + mh + 1, 0xFF00FF88);
-        graphics.fill(mx, my, mx + mw, my + mh, 0xCC1A1A1A);
+        graphics.fill(mx - 1, my - 1, mx + mw + 1, my + mh + 1, (alphaBorder << 24) | 0x00FF88);
+        graphics.fill(mx, my, mx + mw, my + mh, (alphaBg << 24) | 0x1A1A1A);
         
         float scale = 0.05f; // Minimap zoom
         
@@ -368,7 +379,7 @@ public class WNodeScreen extends Screen {
             int nh = (int)(node.getHeight() * scale);
             
             if (nx >= mx && nx + nw <= mx + mw && ny >= my && ny + nh <= my + mh) {
-                graphics.fill(nx, ny, nx + nw, ny + nh, 0xAA00FF88);
+                graphics.fill(nx, ny, nx + nw, ny + nh, (alphaNode << 24) | 0x00FF88);
             }
         }
         
@@ -389,7 +400,7 @@ public class WNodeScreen extends Screen {
                 // AI FIX/ADD STOP
                 
                 if (sx >= mx && sx <= mx + mw && sy >= my && sy <= my + mh && tx >= mx && tx <= mx + mw && ty >= my && ty <= my + mh) {
-                    drawMinimapLine(graphics, sx, sy, tx, ty, 0xAA00FF88);
+                    drawMinimapLine(graphics, sx, sy, tx, ty, (alphaNode << 24) | 0x00FF88);
                 }
             }
         }
@@ -399,7 +410,7 @@ public class WNodeScreen extends Screen {
         int vpy = my + mh/2 + (int)((-height/2) * scale);
         int vpw = (int)(width * scale);
         int vph = (int)(height * scale);
-        graphics.renderOutline(vpx, vpy, vpw, vph, 0xFFFFFFFF);
+        graphics.renderOutline(vpx, vpy, vpw, vph, (alphaVp << 24) | 0xFFFFFF);
         
         graphics.pose().popPose();
     }
@@ -472,16 +483,18 @@ public class WNodeScreen extends Screen {
         int maxVisible = 12;
         int visibleCount = Math.min(maxVisible, filteredItemsList.size());
         int mh = 15 + visibleCount * itemH;
-        
+
         graphics.pose().pushPose();
         graphics.pose().translate(0, 0, 5000);
         graphics.fill(menuX + 2, menuY + 2, menuX + mw + 2, menuY + mh + 2, 0x55000000);
         graphics.fill(menuX, menuY, menuX + mw, menuY + mh, 0xEE1A1A1A);
         graphics.renderOutline(menuX, menuY, mw, mh, 0xFF00FF88);
-        graphics.drawString(font, "> " + searchQuery + "_", menuX + 4, menuY + 4, 0xFF00FF88, false);
-        
-        for (int i = 0; i < visibleCount; i++) {
-            int idx = i + searchScrollOffset;
+        graphics.drawString(font, "> ", menuX + 4, menuY + 4, 0xFF00FF88, false);
+
+        searchField.setFocused(true);
+        searchField.render(graphics, menuX + 8, menuY + 2, mouseX, mouseY, 0);
+
+        for (int i = 0; i < visibleCount; i++) {            int idx = i + searchScrollOffset;
             if (idx >= filteredItemsList.size()) break;
             
             SearchItem item = filteredItemsList.get(idx);
@@ -768,6 +781,16 @@ public class WNodeScreen extends Screen {
             int mw = 140;
             int maxVisible = 12;
             int visibleCount = Math.min(maxVisible, filteredItemsList.size());
+            int mh = 15 + visibleCount * itemH;
+            
+            if (filteredItemsList.size() > maxVisible) {
+                if (mouseX >= menuX + mw - 5 && mouseX <= menuX + mw && mouseY >= menuY + 15 && mouseY <= menuY + mh - 1) {
+                    isDraggingSearchScroll = true;
+                    updateSearchScroll(mouseY, mh, maxVisible);
+                    return true;
+                }
+            }
+
             if (mouseX >= menuX && mouseX <= menuX + mw && mouseY >= menuY + 15 && mouseY <= menuY + 15 + visibleCount * itemH) {
                 int index = (int)((mouseY - (menuY + 15)) / itemH) + searchScrollOffset;
                 if (index >= 0 && index < filteredItemsList.size()) {
@@ -783,6 +806,9 @@ public class WNodeScreen extends Screen {
                         addNodeAt(item.type, nx, ny); isSearching = false; return true;
                     }
                 }
+            }
+            if (searchField.handleMouseClick(mouseX - menuX - 16, mouseY - menuY - 4, button)) {
+                return true;
             }
             isSearching = false; return true;
         }
@@ -906,8 +932,18 @@ public class WNodeScreen extends Screen {
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    private void updateSearchScroll(double mouseY, int mh, int maxVisible) {
+        if (filteredItemsList.size() <= maxVisible) return;
+        float progress = (float) (mouseY - (menuY + 15)) / (mh - 25);
+        progress = Math.max(0, Math.min(1, progress));
+        searchScrollOffset = (int) (progress * (filteredItemsList.size() - maxVisible));
+    }
+
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (isDraggingSearchScroll) {
+            isDraggingSearchScroll = false;
+        }
         if (isResizing) {
             pushUndo();
             isResizing = false; resizingNode = null;
@@ -925,11 +961,11 @@ public class WNodeScreen extends Screen {
         if (linkingNode != null) {
             for (WNode node : graph.getNodes()) {
                 int inPin = node.getPinAt(nx - node.getX(), ny - node.getY(), true);
-                if (inPin != -1) { 
-                    pushUndo(); 
-                    graph.connect(linkingNode.getId(), linkingPin, node.getId(), inPin); 
+                if (inPin != -1) {
+                    pushUndo();
+                    graph.connect(linkingNode.getId(), linkingPin, node.getId(), inPin);
                     if (onSave != null) onSave.accept(graph.save());
-                    break; 
+                    break;
                 }
             }
         }
@@ -940,8 +976,16 @@ public class WNodeScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        int nx = (int) getGraphX(mouseX);
-        int ny = (int) getGraphY(mouseY);
+        if (isDraggingSearchScroll) {
+            int itemH = 12;
+            int maxVisible = 12;
+            int visibleCount = Math.min(maxVisible, filteredItemsList.size());
+            int mh = 15 + visibleCount * itemH;
+            updateSearchScroll(mouseY, mh, maxVisible);
+            return true;
+        }
+
+        int nx = (int) getGraphX(mouseX);        int ny = (int) getGraphY(mouseY);
 
         if (isResizing && resizingNode != null) {
             resizingNode.setWidth(Math.max(40, nx - resizingNode.getX()));
@@ -1072,19 +1116,22 @@ public class WNodeScreen extends Screen {
         }
         if (isSearching) {
             if (keyCode == 256) { isSearching = false; return true; }
-            if (keyCode == 257 || keyCode == 335) { 
+            if (keyCode == 257 || keyCode == 335) {
                 for (SearchItem item : filteredItemsList) {
                     if (!item.isHeader) {
-                        addNodeAt(item.type, (int)(menuX - panX), (int)(menuY - panY)); 
-                        isSearching = false; 
-                        return true; 
+                        addNodeAt(item.type, (int)(menuX - panX), (int)(menuY - panY));
+                        isSearching = false;
+                        return true;
                     }
                 }
             }
-            if (keyCode == 259) { if (!searchQuery.isEmpty()) { searchQuery = searchQuery.substring(0, searchQuery.length() - 1); updateSearch(); } return true; }
-            return true;
+            if (searchField.handleKeyPress(keyCode, scanCode, modifiers)) {
+                searchQuery = searchField.getValue();
+                updateSearch();
+                return true;
+            }
+            return false;
         }
-
         // AI FIX/ADD START
         // AI FIX/ADD STOP
 
@@ -1121,6 +1168,8 @@ public class WNodeScreen extends Screen {
             // AI FIX/ADD START
             isSearching = true;
             searchQuery = "";
+            searchField.setValue("");
+            searchField.setFocused(true);
             menuX = this.mouseX;
             menuY = this.mouseY;
             updateSearch(); 
@@ -1163,12 +1212,13 @@ public class WNodeScreen extends Screen {
         }
         if (isSearching) {
             // AI FIX/ADD START
-            if (searchQuery.isEmpty() && (codePoint == 'A' || codePoint == 'Ф')) return true;
-            /*
-            if (searchQuery.isEmpty() && (codePoint == 'a' || codePoint == 'A' || codePoint == 'ф' || codePoint == 'Ф')) return true;
-            */
+            if (searchField.getValue().isEmpty() && (codePoint == 'A' || codePoint == 'Ф')) return true;
             // AI FIX/ADD STOP
-            searchQuery += codePoint; updateSearch(); return true;
+            if (searchField.handleCharTyped(codePoint, modifiers)) {
+                searchQuery = searchField.getValue();
+                updateSearch();
+            }
+            return true;
         }
         if (selectedNode != null && selectedNode.charTyped(codePoint, modifiers)) return true;
         return super.charTyped(codePoint, modifiers);

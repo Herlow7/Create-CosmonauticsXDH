@@ -192,10 +192,9 @@ public class WTextField extends WElement {
             return true;
         }
 
-        return true; 
+        return false;
         // AI FIX/ADD STOP
-    }
-
+        }
     private int findNextWord(boolean forward) {
         if (value.isEmpty()) return 0;
         int pos = cursorPos;
