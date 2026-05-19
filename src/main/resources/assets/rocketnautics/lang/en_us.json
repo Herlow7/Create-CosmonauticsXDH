@@ -1,29 +1,37 @@
 {
   "block.rocketnautics.rocket_thruster": "Rocket Thruster",
-  "block.rocketnautics.rocket_thruster.funny": "Turns fuel into noise and hope. High-performance, low-survival.",
-  "block.rocketnautics.rocket_thruster.summary": "The core of any liquid-fueled rocket. Requires a constant supply of propellant (Lava) to generate thrust. Throttling is controlled via pump RPM. Extremely hot exhaust!",
-  
+  "block.rocketnautics.rocket_thruster.funny": "Turns _fuel_ into noise and _hope_. High-performance, _low-survival_.",
+  "block.rocketnautics.rocket_thruster.summary": "The _core_ of any liquid-fueled _rocket_. Requires a constant supply of _propellant_ (Lava) to generate _thrust_. Throttling is controlled via pump _RPM_. _Warning_: exhaust is _extremely hot_!",
+
   "block.rocketnautics.vector_thruster": "Vector Thruster",
-  "block.rocketnautics.vector_thruster.funny": "Engineers discovered that if you wiggle the engine, the rocket goes a different way. Revolutionary.",
-  "block.rocketnautics.vector_thruster.summary": "A steerable liquid engine. Tilt is controlled by Redstone signals on its sides. Perfect for steering your ship without separate RCS thrusters.",
-  
+  "block.rocketnautics.vector_thruster.funny": "_Engineers_ discovered that if you _wiggle_ the engine, the rocket goes a _different_ way. _Revolutionary!_",
+  "block.rocketnautics.vector_thruster.summary": "A _steerable_ _liquid_ engine. _Tilt angle_ is controlled by Redstone signals on its _sides_. Perfect for steering your _course_ without separate RCS _thrusters_.",
+
   "block.rocketnautics.booster_thruster": "Booster Thruster",
-  "block.rocketnautics.booster_thruster.funny": "For those who want to reach the Moon by yesterday. Side effects may include rapid unplanned disassembly.",
-  "block.rocketnautics.booster_thruster.summary": "Solid fuel booster. Provides immense initial thrust but cannot be throttled or turned off once ignited. Uses Coal blocks as fuel.",
-  
+  "block.rocketnautics.booster_thruster.funny": "For those who want to be on the _Moon_ by _yesterday_. Side effects may include rapid _unplanned disassembly_.",
+  "block.rocketnautics.booster_thruster.summary": "_Solid fuel_ booster. Provides immense _initial_ thrust, but cannot be throttled or turned off _once ignited_. Uses, believe it or not, _Coal blocks_ as fuel.",
+
   "block.rocketnautics.rcs_thruster": "RCS Thruster",
-  "block.rocketnautics.rcs_thruster.funny": "Shoots air. We all know it's just sucking the oxygen out of the cabin.",
-  "block.rocketnautics.rcs_thruster.summary": "Small maneuvering thruster. Essential for attitude control and translation in vacuum. Uses compressed gas to nudge your ship with high precision.",
-  
+  "block.rocketnautics.rcs_thruster.funny": "Shoots _air_. We all know it's just _sucking_ the oxygen _out of the cabin_.",
+  "block.rocketnautics.rcs_thruster.summary": "_Essential_ for attitude control in a _vacuum_. Uses _compressed gas_ for _high-precision_ course correction.",
 
   "block.rocketnautics.separator": "Stage Separator",
-  "block.rocketnautics.separator.funny": "Essentially a controlled explosion. Hopefully, only the parts you want will fall off.",
-  "block.rocketnautics.separator.summary": "Explosive bolts designed to separate rocket stages. Vital for shedding dead weight during ascent. Triggered by a Redstone pulse.",
-  
+  "block.rocketnautics.separator.funny": "Essentially, a _controlled explosion_. Hopefully, only the parts that _should_ will fall off.",
+  "block.rocketnautics.separator.summary": "Explosive bolts designed for _stage separation_. Vital for _shedding_ dead weight during ascent. Triggered by a _Redstone pulse_.",
+
   "block.rocketnautics.sputnik": "Sputnik Probe",
-  "block.rocketnautics.sputnik.funny": "Beep... Beep... Beep... A metal potato in the void.",
-  "block.rocketnautics.sputnik.summary": "An early artificial satellite. Acts as a permanent Chunk Loader and reports biome colors. Can be integrated with ComputerCraft for advanced cartography.",
-  
+  "block.rocketnautics.sputnik.funny": "Beep... Beep... Beep... A metal _potato_ in the vastness of _space_.",
+  "block.rocketnautics.sputnik.summary": "An early _artificial satellite_. Acts as a permanent _Chunk Loader_ and reports _biome colors_. Can be integrated with _ComputerCraft_ for _cartography_.",
+
+  "item.rocketnautics.music_disc_space": "Music Disc",
+  "item.rocketnautics.music_disc_space.desc": "Kevin MacLeod - Brittle Rille",
+  "item.rocketnautics.music_disc_space.funny": "We noticed that one of our employees was playing some _game_ instead of _working_. We fired him, of course, but we _liked_ the _soundtrack_!",
+  "item.rocketnautics.music_disc_space.summary": "A high-quality _recording_ from a _distant world_. Plays a relaxing _space-themed_ track in any _Jukebox_.",
+
+  "item.rocketnautics.jetpack": "Cosmonautics Jetpack",
+  "item.rocketnautics.jetpack.funny": "For those who find _gravity_ a bit too _clingy_. Better _not to use_ it as a personal _heater_...",
+  "item.rocketnautics.jetpack.summary": "_Wearable_ flight system. Press _[G]_ to toggle _modes_. Uses _fuel_ to generate _thrust_. Hold _[Space]_ to _defy the laws of physics_.",
+
   "rocketnautics.tooltip.summary_title": "Technical Summary",
   "rocketnautics.simulated_section.rocketnautics": "Cosmonautics",
   "itemGroup.rocketnautics.tab.resource": "Cosmonautics Resources",
@@ -32,11 +40,8 @@
   "gui.rocketnautics.max_thrust": "Max Thrust (15 Signal)",
   "gui.rocketnautics.thrust_power": "Thrust Power",
   
-  "item.rocketnautics.music_disc_space": "Music Disc",
-  "item.rocketnautics.music_disc_space.desc": "Kevin MacLeod - Brittle Rille",
-  "item.rocketnautics.music_disc_space.funny": "We noticed that one of our employees was playing some game instead of working. We fired him, but we really liked the soundtrack.",
-  "item.rocketnautics.music_disc_space.summary": "A high-quality recording from a distant world. Plays a relaxing space-themed track in any Jukebox.",
-  
+
+
   "item.rocketnautics.credits_book": "Credits",
   "rocketnautics.goggles.status": "Status",
   "rocketnautics.goggles.active": "Active",
@@ -46,11 +51,7 @@
   "rocketnautics.goggles.fuel": "Fuel Buffer",
   "rocketnautics.goggles.burn_time": "Time Remaining",
   "rocketnautics.goggles.fuel_usage": "Fuel Flow Rate",
-  
-  "item.rocketnautics.jetpack": "Cosmonautics Jetpack",
-  "item.rocketnautics.jetpack.funny": "For those who find gravity a bit too clingy. Warning: Do not use as a personal heater.",
-  "item.rocketnautics.jetpack.summary": "Wearable flight system. Press [G] to toggle systems. Uses fuel to provide vertical thrust. Hold [Space] to defy physics (briefly).",
-  
+
   "block.rocketnautics.titanium_ore": "Titanium Ore",
   "block.rocketnautics.titanium_ore.funny": "The backbone of your future failed space missions.",
   "block.rocketnautics.titanium_ore.summary": "Rare ore found in high altitudes or deep underground. Essential for building strong, lightweight aerospace components.",

@@ -1,29 +1,38 @@
 {
   "block.rocketnautics.rocket_thruster": "Ракетный двигатель",
-  "block.rocketnautics.rocket_thruster.funny": "Превращает топливо в шум и надежду. Высокая мощность, низкая выживаемость.",
-  "block.rocketnautics.rocket_thruster.summary": "Сердце любой жидкостной ракеты. Требует постоянной подачи топлива (Лавы) для создания тяги. Мощность регулируется оборотами насоса. Осторожно: выхлоп очень горячий!",
+  "block.rocketnautics.rocket_thruster.funny": "Превращает _топливо_ в шум и _надежду_. Высокая мощность, _низкая выживаемость_.",
+  "block.rocketnautics.rocket_thruster.summary": "_Сердце_ любой жидкостной _ракеты_. Требует постоянной подачи _жидкого топлива_ для создания _тяги_. Мощность регулируется _оборотами_ насоса. _Осторожно_: выхлоп _очень горячий_!",
   
   "block.rocketnautics.vector_thruster": "Векторный двигатель",
-  "block.rocketnautics.vector_thruster.funny": "Инженеры обнаружили, что если двигатель покачать, ракета летит в другую сторону. Революционно.",
-  "block.rocketnautics.vector_thruster.summary": "Поворотный жидкостный двигатель. Угол наклона управляется редстоуном с боковых сторон. Идеален для управления курсом без отдельных маневровых двигателей.",
+  "block.rocketnautics.vector_thruster.funny": "_Инженеры_ обнаружили, что если двигатель _покачать_, ракета летит в _другую_ сторону. _Революционно!_",
+  "block.rocketnautics.vector_thruster.summary": "_Поворотный_ _жидкостный_ двигатель. _Угол наклона_ управляется редстоуном с _боковых сторон_. Идеален для управления _курсом_ без отдельных маневровых _двигателей_.",
   
   "block.rocketnautics.booster_thruster": "Твердотопливный ускоритель",
-  "block.rocketnautics.booster_thruster.funny": "Для тех, кто хочет быть на Луне еще вчера. Побочные эффекты включают внезапную незапланированную разборку.",
-  "block.rocketnautics.booster_thruster.summary": "Твердотопливный ускоритель. Дает огромную начальную тягу, но его нельзя выключить или регулировать после зажигания. В качестве топлива использует блоки угля.",
+  "block.rocketnautics.booster_thruster.funny": "Для тех, кто хочет быть на _Луне_ ещё _вчера_. Побочные эффекты включают внезапную _незапланированную разборку_.",
+  "block.rocketnautics.booster_thruster.summary": "_Твердотопливный_ ускоритель. Дает огромную _начальную_ тягу, но его нельзя выключить или регулировать _после зажигания_. В качестве топлива, не поверите, использует _блоки угля_.",
   
   "block.rocketnautics.rcs_thruster": "Маневровый двигатель (RCS)",
-  "block.rocketnautics.rcs_thruster.funny": "Стреляет воздухом. Мы-то знаем, что он просто выкачивает кислород из кабины.",
-  "block.rocketnautics.rcs_thruster.summary": "Малый маневровый двигатель. Необходим для управления ориентацией в вакууме. Использует сжатый газ для высокоточной корректировки курса.",
-  
+  "block.rocketnautics.rcs_thruster.funny": "Стреляет _воздухом_. Мы-то знаем, что он просто _выкачивает_ кислород _из кабины_.",
+  "block.rocketnautics.rcs_thruster.summary": "_Необходим_ для управления ориентацией в _вакууме_. Использует _сжатый газ_ для _высокоточной_ корректировки курса.",
 
   "block.rocketnautics.separator": "Разделитель ступеней",
-  "block.rocketnautics.separator.funny": "По сути, это контролируемый взрыв. Надеемся, отвалится только то, что должно.",
-  "block.rocketnautics.separator.summary": "Взрывные болты, предназначенные для отделения ступеней. Жизненно важны для сброса лишнего веса при взлете. Активируются импульсом редстоуна.",
+  "block.rocketnautics.separator.funny": "По своей сути, это _контролируемый взрыв_. Надеемся, отвалится только то, что _должно_.",
+  "block.rocketnautics.separator.summary": "Взрывные болты, предназначенные для _отделения ступеней_. Жизненно важны для _сброса_ лишнего веса при взлете. Активируются _сигналом редстоуна_.",
   
   "block.rocketnautics.sputnik": "Зонд 'Спутник'",
-  "block.rocketnautics.sputnik.funny": "Бип... Бип... Бип... Металлическая картофелина в пустоте.",
-  "block.rocketnautics.sputnik.summary": "Ранний искусственный спутник. Работает как постоянный загрузчик чанков и передает цвета биомов. Может быть интегрирован с ComputerCraft для картографии.",
-  
+  "block.rocketnautics.sputnik.funny": "Бип... Бип... Бип... Металлическая _картофелина_ в просторах _космоса_.",
+  "block.rocketnautics.sputnik.summary": "Ранний _искусственный спутник_. Работает как постоянный _загрузчик чанков_ и передает _цвета биомов_. Может быть интегрирован с _ComputerCraft_ для _картографии_.",
+
+  "item.rocketnautics.music_disc_space": "Музыкальный диск",
+  "item.rocketnautics.music_disc_space.desc": "Kevin MacLeod - Brittle Rille",
+  "item.rocketnautics.music_disc_space.funny": "Мы заметили, что один сотрудник вместо _работы_ играет в какую-то _игру_. Его конечно же уволили, но _саундтрек_ нам _понравился_!",
+  "item.rocketnautics.music_disc_space.summary": "Высококачественная _запись_ из _далекого мира_. Играет расслабляющий _космический_ трек в любом _проигрывателе_.",
+
+  "item.rocketnautics.jetpack": "Джетпак Cosmonautics",
+  "item.rocketnautics.jetpack.funny": "Для тех, кому _гравитация_ кажется слишком _навязчивой_. Лучше _не использовать_ как личный _обогреватель_...",
+  "item.rocketnautics.jetpack.summary": "_Носимая_ полетная система. Нажмите_ [G]_ для переключения _режимов_. Использует _топливо_ для создания _тяги_. Удерживайте _[Пробел]_ для _преодоления законов физики_.",
+
+
   "rocketnautics.tooltip.summary_title": "Техническая сводка",
   "rocketnautics.simulated_section.rocketnautics": "Cosmonautics",
   "itemGroup.rocketnautics.tab.resource": "Ресурсы Cosmonautics",
@@ -31,12 +40,7 @@
   "gui.rocketnautics.min_thrust": "Мин. тяга (0 Сигнал)",
   "gui.rocketnautics.max_thrust": "Макс. тяга (15 Сигнал)",
   "gui.rocketnautics.thrust_power": "Мощность тяги",
-  
-  "item.rocketnautics.music_disc_space": "Музыкальный диск",
-  "item.rocketnautics.music_disc_space.desc": "Kevin MacLeod - Brittle Rille",
-  "item.rocketnautics.music_disc_space.funny": "Мы заметили, что наш сотрудник вместо работы играет в какую-то игру. Мы его уволили, но саундтрек нам понравился.",
-  "item.rocketnautics.music_disc_space.summary": "Высококачественная запись из далекого мира. Играет расслабляющий космический трек в любом проигрывателе.",
-  
+
   "item.rocketnautics.credits_book": "Титры",
   "rocketnautics.goggles.status": "Статус",
   "rocketnautics.goggles.active": "Активен",
@@ -46,11 +50,7 @@
   "rocketnautics.goggles.fuel": "Запас топлива",
   "rocketnautics.goggles.burn_time": "Оставшееся время",
   "rocketnautics.goggles.fuel_usage": "Расход топлива",
-  
-  "item.rocketnautics.jetpack": "Джетпак Cosmonautics",
-  "item.rocketnautics.jetpack.funny": "Для тех, кому гравитация кажется слишком навязчивой. Осторожно: не использовать как личный обогреватель.",
-  "item.rocketnautics.jetpack.summary": "Носимая полетная система. Нажмите [G] для переключения режимов. Использует топливо для создания тяги. Удерживайте [Пробел] для (краткого) преодоления законов физики.",
-  
+
   "block.rocketnautics.titanium_ore": "Титановая руда",
   "block.rocketnautics.titanium_ore.funny": "Основа ваших будущих провальных космических миссий.",
   "block.rocketnautics.titanium_ore.summary": "Редкая руда, встречающаяся на большой высоте или глубоко под землей. Необходима для создания прочных и легких аэрокосмических компонентов.",
