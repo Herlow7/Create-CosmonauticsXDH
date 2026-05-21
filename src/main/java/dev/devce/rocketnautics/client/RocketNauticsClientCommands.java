@@ -27,6 +27,18 @@ public class RocketNauticsClientCommands {
                     showRenderInfo();
                     return 1;
                 })
+            )
+            .then(Commands.literal("sonic")
+                .then(Commands.literal("debug")
+                    .executes(context -> {
+                        SkyHandler.debugSonicBoom = !SkyHandler.debugSonicBoom;
+                        String status = SkyHandler.debugSonicBoom ? "ENABLED" : "DISABLED";
+                        ChatFormatting color = SkyHandler.debugSonicBoom ? ChatFormatting.GREEN : ChatFormatting.RED;
+                        Minecraft.getInstance().player.displayClientMessage(
+                            Component.literal("Sonic Boom Debug: ").append(Component.literal(status).withStyle(color)), true);
+                        return 1;
+                    })
+                )
             );
             
         dispatcher.register(builder);

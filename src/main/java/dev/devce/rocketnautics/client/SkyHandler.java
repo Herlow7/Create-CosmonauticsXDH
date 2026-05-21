@@ -42,7 +42,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
 public class SkyHandler {
-
+    public static boolean debugSonicBoom = false;
+    
     /**
      * Adjusts the fog color towards black as the player ascends into space.
      */
@@ -1706,14 +1707,20 @@ public class SkyHandler {
                 UUID uuid = subLevel.getUniqueId();
                 ShipSpeedTracker tracker = CLIENT_SPEED_TRACKERS.get(uuid);
                 if (tracker != null) {
-                    if (tracker.sonicBoomTimer > 0.0f) {
+                    if (debugSonicBoom) {
+                        tracker.sonicBoomTimer -= delta;
+                        if (tracker.sonicBoomTimer <= 0.0f) tracker.sonicBoomTimer = 1.0f;
+                    } else if (tracker.sonicBoomTimer > 0.0f) {
                         tracker.sonicBoomTimer = Math.max(0.0f, tracker.sonicBoomTimer - delta);
-                        if (tracker.sonicBoomTimer > 0.0f) {
-                            renderVaporCone(event.getPoseStack(), subLevel.logicalPose().position(), tracker.velocity, tracker.sonicBoomTimer, event.getPartialTick().getGameTimeDeltaTicks());
-                            if (tracker.sonicBoomTimer > maxTimer) {
-                                maxTimer = tracker.sonicBoomTimer;
-                                activeShipPos = subLevel.logicalPose().position();
-                            }
+                    }
+                    
+                    if (tracker.sonicBoomTimer > 0.0f) {
+                        Vector3d renderVel = (tracker.velocity != null && tracker.velocity.lengthSquared() > 0.1) 
+                                ? tracker.velocity : new Vector3d(1, 0, 0);
+                        renderVaporCone(event.getPoseStack(), subLevel.logicalPose().position(), renderVel, tracker.sonicBoomTimer, event.getPartialTick().getGameTimeDeltaTicks());
+                        if (tracker.sonicBoomTimer > maxTimer) {
+                            maxTimer = tracker.sonicBoomTimer;
+                            activeShipPos = subLevel.logicalPose().position();
                         }
                     }
                 }
