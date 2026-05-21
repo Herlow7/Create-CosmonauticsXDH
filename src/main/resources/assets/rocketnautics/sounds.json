@@ -26,5 +26,25 @@
         "stream": true
       }
     ]
+  },
+  "sonic_boom": {
+    "category": "neutral",
+    "subtitle": "subtitles.rocketnautics.sonic_boom",
+    "sounds": [
+      {
+        "name": "rocketnautics:sonic_boom",
+        "stream": false
+      }
+    ]
+  },
+  "high_wind": {
+    "category": "player",
+    "subtitle": "subtitles.rocketnautics.high_wind",
+    "sounds": [
+      {
+        "name": "rocketnautics:high_wind",
+        "stream": true
+      }
+    ]
   }
 }

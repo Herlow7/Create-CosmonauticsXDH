@@ -27,6 +27,13 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundSource;
+import dev.devce.rocketnautics.registry.RocketSounds;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Core physics handler for space-related mechanics.
  * Manages zero-gravity effects for ships and entities, reentry heat damage, 
@@ -92,8 +99,135 @@ public class GlobalSpacePhysicsHandler {
         if (worldPos == null) return;
 
         applyZeroGravity(subLevel, handle, level, worldPos, timeStep);
+        applySonicBoom(subLevel, handle, level);
         // applyReentryHeat(subLevel, handle, level, worldPos, timeStep);
         // applyMaxQStress(subLevel, handle, level, worldPos, timeStep);
+    }
+
+    private static final Map<UUID, Boolean> SUPERSONIC_SHIPS = new ConcurrentHashMap<>();
+    private static final Map<UUID, Vector3d> LAST_SHIPS_VELOCITIES = new ConcurrentHashMap<>();
+
+    private static void applySonicBoom(ServerSubLevel subLevel, RigidBodyHandle handle, ServerLevel level) {
+        Vector3d worldPos = subLevel.logicalPose().position();
+        if (worldPos == null) return;
+
+        double altitude = worldPos.y();
+        
+        // Sonic booms only occur in atmosphere (where density is above a threshold)
+        double density = 1.0 - calculateGravityFactor(level, altitude);
+        if (density < 0.1) {
+            SUPERSONIC_SHIPS.remove(subLevel.getUniqueId());
+            LAST_SHIPS_VELOCITIES.remove(subLevel.getUniqueId());
+            return;
+        }
+
+        Vector3d velocity = new Vector3d(handle.getLinearVelocity());
+        double speed = velocity.length();
+        
+        // Mach 1 is configured by the server settings (default: 80.0 blocks per second).
+        // Hysteresis allows re-triggering if it slows down below 85% of Mach 1
+        double mach1 = dev.devce.rocketnautics.RocketConfig.SERVER.sonicBoomSpeedThreshold.get();
+        double machReset = mach1 * 0.85;
+        
+        UUID uuid = subLevel.getUniqueId();
+        boolean wasSupersonic = SUPERSONIC_SHIPS.getOrDefault(uuid, false);
+
+        // Filter out extreme acceleration jumps typical of creative physics gun drags / teleports
+        Vector3d lastVel = LAST_SHIPS_VELOCITIES.get(uuid);
+        LAST_SHIPS_VELOCITIES.put(uuid, new Vector3d(velocity));
+        
+        boolean abnormalAcceleration = false;
+        if (lastVel != null) {
+            double accel = new Vector3d(velocity).sub(lastVel).length() * 20.0; // accel in m/s^2 (20 ticks/sec)
+            if (accel > 150.0) {
+                abnormalAcceleration = true;
+            }
+        } else {
+            abnormalAcceleration = true; // Skip first tick to prevent boom on spawning/teleporting
+        }
+
+        if (speed >= mach1) {
+            if (!wasSupersonic) {
+                SUPERSONIC_SHIPS.put(uuid, true);
+                if (!abnormalAcceleration) {
+                    triggerSonicBoomEffects(subLevel, level, worldPos, velocity);
+                }
+            }
+        } else if (speed < machReset) {
+            if (wasSupersonic) {
+                SUPERSONIC_SHIPS.put(uuid, false);
+            }
+        }
+    }
+
+    private static void triggerSonicBoomEffects(ServerSubLevel subLevel, ServerLevel level, Vector3d worldPos, Vector3d velocity) {
+        // Play the sonic boom sound at a very large range (volume 12.0f translates to ~192 blocks range)
+        level.playSound(
+                null,
+                worldPos.x(), worldPos.y(), worldPos.z(),
+                RocketSounds.SONIC_BOOM.get(),
+                SoundSource.NEUTRAL,
+                12.0f,
+                1.0f
+        );
+
+        // Spawn vapor shockwave ring perpendicular to the velocity direction
+        Vector3d dir = new Vector3d(velocity);
+        double velLength = dir.length();
+        if (velLength > 0.001) {
+            dir.normalize();
+        } else {
+            dir.set(0, 1, 0); // Default to up if no velocity
+        }
+
+        // Find two perpendicular vectors to draw a circle around the travel axis
+        Vector3d u = new Vector3d();
+        Vector3d v = new Vector3d();
+        if (Math.abs(dir.x) > 0.9) {
+            u.set(0, 1, 0);
+        } else {
+            u.set(1, 0, 0);
+        }
+        dir.cross(u, v).normalize();
+        dir.cross(v, u).normalize();
+
+        // Expand shockwave rings of cloud particles
+        for (double radius = 1.5; radius <= 8.5; radius += 1.75) {
+            int points = (int) (radius * 10);
+            for (int i = 0; i < points; i++) {
+                double angle = (2.0 * Math.PI * i) / points;
+                double dx = (u.x * Math.cos(angle) + v.x * Math.sin(angle)) * radius;
+                double dy = (u.y * Math.cos(angle) + v.y * Math.sin(angle)) * radius;
+                double dz = (u.z * Math.cos(angle) + v.z * Math.sin(angle)) * radius;
+
+                level.sendParticles(
+                        ParticleTypes.CLOUD,
+                        worldPos.x() + dx,
+                        worldPos.y() + dy,
+                        worldPos.z() + dz,
+                        1,
+                        0.15, 0.15, 0.15,
+                        0.02
+                );
+            }
+        }
+
+        // Spawn visual flash and dramatic explosion shockwave at center
+        level.sendParticles(
+                ParticleTypes.FLASH,
+                worldPos.x(), worldPos.y(), worldPos.z(),
+                6,
+                0.5, 0.5, 0.5,
+                0.0
+        );
+
+        level.sendParticles(
+                ParticleTypes.EXPLOSION_EMITTER,
+                worldPos.x(), worldPos.y(), worldPos.z(),
+                3,
+                1.0, 1.0, 1.0,
+                0.0
+        );
     }
 
     /**

@@ -14,17 +14,15 @@ public abstract class LevelRendererMixin {
 
     @Redirect(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;getStarBrightness(F)F"))
     private float rocketnautics$boostStarBrightness(net.minecraft.client.multiplayer.ClientLevel instance, float partialTick) {
-        float original = instance.getStarBrightness(partialTick);
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return original;
+        if (mc.player == null) return instance.getStarBrightness(partialTick);
 
         double y = mc.player.getY();
         if (y > 1000.0) {
-            float factor = (float) Mth.clamp((y - 1000.0) / 1000.0, 0.0, 1.0);
-            
-            return Mth.lerp(factor, original, 1.0f);
+            // Disable vanilla stars above 1000m to let our beautiful custom HD stars render
+            return 0.0f;
         }
-        return original;
+        return instance.getStarBrightness(partialTick);
     }
 
     @Redirect(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/ClientLevel;getSkyColor(Lnet/minecraft/world/phys/Vec3;F)Lnet/minecraft/world/phys/Vec3;"))

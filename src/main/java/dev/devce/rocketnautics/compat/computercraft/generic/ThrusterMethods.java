@@ -46,8 +46,8 @@ public class ThrusterMethods implements GenericPeripheral {
     @LuaFunction(mainThread = true)
     public final float getThrust(IThruster thruster) {
         return switch (thruster) {
-            case RocketThrusterBlockEntity rt -> (float)rt.getCurrentPower() * 10.0F;
-            case BoosterThrusterBlockEntity bt -> (float)bt.getThrustPower().getValue() * 10.0F;
+            case RocketThrusterBlockEntity rt -> (float)rt.getCurrentPower() * 50.0F;
+            case BoosterThrusterBlockEntity bt -> (float)bt.getThrustPower().getValue() * 50.0F;
             default -> 0F;
         };
     }
@@ -55,8 +55,10 @@ public class ThrusterMethods implements GenericPeripheral {
     @LuaFunction(mainThread = true)
     public final void setThrust(IThruster thruster, int power) {
         ScrollValueBehaviour behaviour = thruster.getThrustPower();
-        if (behaviour != null)
-            behaviour.setValue(Math.max(0, Math.min(50, power / 10)));
+        if (behaviour != null) {
+            int limit = dev.devce.rocketnautics.RocketConfig.SERVER.brokenBarrier.get() ? 100 : 20;
+            behaviour.setValue(Math.max(0, Math.min(limit, power / 50)));
+        }
     }
 
     @LuaFunction(
@@ -90,7 +92,7 @@ public class ThrusterMethods implements GenericPeripheral {
             }
             case BoosterThrusterBlockEntity bt -> {
                 data.put("ignition_ticks", bt.ignitionTicks);
-                data.put("thrust_power", bt.getThrustPower().getValue() * 10);
+                data.put("thrust_power", bt.getThrustPower().getValue() * 50);
                 data.put("ignited", bt.isIgnited());
                 data.put("is_spent", bt.isSpent());
                 data.put("fuel_ticks", bt.getFuelTicks());

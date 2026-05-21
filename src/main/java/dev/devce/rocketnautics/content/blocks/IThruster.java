@@ -30,7 +30,7 @@ public interface IThruster {
             setActive(value > 0);
             var behavior = getThrustPower();
             if (behavior != null) {
-                float maxN = behavior.getValue() * 10.0f;
+                float maxN = behavior.getValue() * 50.0f;
                 setThrottle(maxN > 0 ? (float)(value / maxN) : 0);
             } else {
                 setThrottle((float) value);

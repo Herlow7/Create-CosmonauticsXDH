@@ -680,7 +680,7 @@ public class RocketThrusterBlockEntity extends SmartBlockEntity implements Block
 
         int power = getCurrentPower();
         tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.thrust")).append(": ")
-                .append(Component.literal(power * 10 + " N").withStyle(net.minecraft.ChatFormatting.GOLD)));
+                .append(Component.literal(power * 50 + " N").withStyle(net.minecraft.ChatFormatting.GOLD)));
 
         int flowPerSecond = currentFuelUsage * 20;
         tooltip.add(Component.literal("  Flow Rate: ")
@@ -743,7 +743,7 @@ public class RocketThrusterBlockEntity extends SmartBlockEntity implements Block
             setThrottle((float) value);
         } else if ("thrust".equals(key)) {
             setActive(value > 0);
-            float maxN = maxThrust.getValue() * 10.0f;
+            float maxN = maxThrust.getValue() * 50.0f;
             setThrottle(maxN > 0 ? (float) (value / maxN) : 0);
         }
     }

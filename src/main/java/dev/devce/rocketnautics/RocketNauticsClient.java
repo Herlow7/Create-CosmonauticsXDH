@@ -432,7 +432,7 @@ public class RocketNauticsClient {
                     for (net.minecraft.world.level.block.entity.BlockEntity be : chunk.getBlockEntities().values()) {
                         if (be instanceof dev.devce.rocketnautics.content.blocks.RocketThrusterBlockEntity thruster && thruster.isActive()) {
                             net.minecraft.core.Direction dir = thruster.getThrustDirection().getOpposite();
-                            double power = thruster.getCurrentPower() * 10.0;
+                            double power = thruster.getCurrentPower() * 50.0;
                             Vector3d thrustDir = new Vector3d(dir.getStepX(), dir.getStepY(), dir.getStepZ()).rotate(ship.logicalPose().orientation()).mul(power);
                             netThrust.add(thrustDir);
                         }

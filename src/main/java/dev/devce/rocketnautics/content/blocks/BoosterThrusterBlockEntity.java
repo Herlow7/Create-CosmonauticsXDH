@@ -77,10 +77,10 @@ public class BoosterThrusterBlockEntity extends SmartBlockEntity implements Bloc
 
     public static void tick(Level level, BlockPos pos, BlockState state, BoosterThrusterBlockEntity blockEntity) {
         // Runtime limit update for "Break Barrier" command
-        int targetMax = RocketConfig.SERVER.brokenBarrier.get() ? 500 : 100;
+        int targetMax = RocketConfig.SERVER.brokenBarrier.get() ? 100 : 20;
         // Since 'max' is protected, we'll use a local check or just apply it if needed.
         // Actually, we can use the value itself to see if it's out of bounds
-        if (blockEntity.thrustPower.getValue() > targetMax || (targetMax == 500 && blockEntity.thrustPower.getValue() <= 100 && level.getGameTime() % 20 == 0)) {
+        if (blockEntity.thrustPower.getValue() > targetMax || (targetMax == 100 && blockEntity.thrustPower.getValue() <= 20 && level.getGameTime() % 20 == 0)) {
              blockEntity.thrustPower.between(1, targetMax);
         }
 
@@ -454,7 +454,7 @@ public class BoosterThrusterBlockEntity extends SmartBlockEntity implements Bloc
 
         int power = thrustPower.getValue();
         tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.thrust")).append(": ")
-                .append(Component.literal(power * 10 + " N").withStyle(net.minecraft.ChatFormatting.GOLD)));
+                .append(Component.literal(power * 50 + " N").withStyle(net.minecraft.ChatFormatting.GOLD)));
 
         if (ignited && fuelTicks > 0) {
             tooltip.add(Component.literal("  ").append(Component.translatable("rocketnautics.goggles.burn_time")).append(": ")

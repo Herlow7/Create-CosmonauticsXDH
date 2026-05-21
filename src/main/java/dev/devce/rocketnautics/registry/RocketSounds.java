@@ -20,6 +20,12 @@ public class RocketSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> MUSIC_ARCADIA = SOUNDS.register("music.arcadia",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "music.arcadia")));
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> SONIC_BOOM = SOUNDS.register("sonic_boom",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "sonic_boom")));
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> HIGH_WIND = SOUNDS.register("high_wind",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "high_wind")));
+
     public static void register(IEventBus eventBus) {
         SOUNDS.register(eventBus);
     }
