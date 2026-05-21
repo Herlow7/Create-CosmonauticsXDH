@@ -16,7 +16,10 @@ public final class PlanetColors {
     private static final IntList idToColor = new IntArrayList();
     private static final Object2ByteLinkedOpenHashMap<TagKey<Biome>> biomeToId = new Object2ByteLinkedOpenHashMap<>();
 
-    private static final byte FALLBACK;
+    public static final byte OCEAN;
+    public static final byte RIVER;
+
+    public static final byte FALLBACK;
 
     // TODO add more colors for sun and moon
     public static final byte SUN_1;
@@ -25,23 +28,26 @@ public final class PlanetColors {
     static {
         registerColor(0);
         // overworld
-        byte ocean = setBiomeColor(BiomeTags.IS_OCEAN, 10, 40 ,120);
-        associateBiomeTag(BiomeTags.IS_DEEP_OCEAN, ocean);
-        setBiomeColor(BiomeTags.IS_RIVER, 20, 80, 180);
-        setBiomeColor(BiomeTags.IS_BEACH, 210, 190, 140);
-        setBiomeColor(BiomeTags.HAS_VILLAGE_DESERT, 200, 180, 100);
-        setBiomeColor(BiomeTags.IS_FOREST, 20, 90, 30);
-        setBiomeColor(BiomeTags.IS_JUNGLE, 10, 70, 20);
-        setBiomeColor(BiomeTags.IS_TAIGA, 20, 60, 40);
+        OCEAN = setBiomeColor(BiomeTags.IS_OCEAN, 15, 45 ,135); // Curated deep royal blue
+        associateBiomeTag(BiomeTags.IS_DEEP_OCEAN, OCEAN);
+        RIVER = setBiomeColor(BiomeTags.IS_RIVER, 25, 95, 215); // Vibrant blue
+        setBiomeColor(BiomeTags.IS_BEACH, 225, 205, 155); // Warm sand
+        setBiomeColor(BiomeTags.HAS_VILLAGE_DESERT, 215, 195, 115); // Golden sand
+        setBiomeColor(Tags.Biomes.IS_PLAINS, 45, 145, 55); // Emerald green
+        setBiomeColor(BiomeTags.IS_FOREST, 25, 105, 35); // Lush dark forest green
+        setBiomeColor(BiomeTags.IS_JUNGLE, 15, 85, 25); // Deep jungle teal-green
+        setBiomeColor(BiomeTags.IS_TAIGA, 30, 75, 55); // Cool pine green
         setBiomeColor(BiomeTags.IS_SAVANNA, 160, 140, 70);
-        setBiomeColor(Tags.Biomes.IS_SNOWY, 220, 220, 230);
-        setBiomeColor(BiomeTags.IS_BADLANDS, 180, 80, 30);
+        setBiomeColor(Tags.Biomes.IS_SNOWY, 240, 240, 245); // Pristine snow white
+        setBiomeColor(BiomeTags.IS_BADLANDS, 195, 90, 40); // Terracotta orange
         setBiomeColor(Tags.Biomes.IS_SWAMP, 50, 70, 40);
         setBiomeColor(Tags.Biomes.IS_WINDSWEPT, 80, 100, 80);
         setBiomeColor(Tags.Biomes.IS_MUSHROOM, 100, 90, 100);
-        byte stony = setBiomeColor(BiomeTags.IS_MOUNTAIN, 120, 120, 120);
+        byte stony = setBiomeColor(BiomeTags.IS_MOUNTAIN, 135, 135, 135); // Slate grey
         associateBiomeTag(Tags.Biomes.IS_STONY_SHORES, stony);
-        FALLBACK = setBiomeColor(Tags.Biomes.IS_PLAINS, 30, 120, 40);
+        FALLBACK = addColor(30, 120 ,40);
+        // TODO separate these into "color palettes" that are associated with the cube planet
+        // Since it's a one-time sync, these color palettes could also be sent to client with the universe definition
         // sun
         SUN_1 = addColor(250, 230, 90);
         // moon
@@ -74,7 +80,7 @@ public final class PlanetColors {
     }
 
     public static byte setBiomeColor(TagKey<Biome> biome, int r, int g, int b, int a) {
-        return setBiomeColor(biome, (r << 24) | (b << 16) | (g << 8) | r);
+        return setBiomeColor(biome, (a << 24) | (b << 16) | (g << 8) | r);
     }
 
     public static byte setBiomeColor(TagKey<Biome> biome, int packedColor) {
@@ -88,6 +94,15 @@ public final class PlanetColors {
         return idToColor.getInt(id);
     }
 
+    public static int[] getUnpackedColorARGB(byte id) {
+        int argb = getPackedColor(id);
+        int a = (argb >> 24) & 0xFF;
+        int b = (argb >> 16) & 0xFF;
+        int g = (argb >> 8) & 0xFF;
+        int r = argb & 0xFF;
+        return new int[] {a, r, g, b};
+    }
+
     public static byte getBiomeColor(Holder<Biome> biome) {
         for (TagKey<Biome> key : biomeToId.keySet()) {
             if (biome.is(key)) {
@@ -95,5 +110,13 @@ public final class PlanetColors {
             }
         }
         return FALLBACK;
+    }
+
+    public static int getReservedCount() {
+        return idToColor.size();
+    }
+
+    public static boolean isWater(byte id) {
+        return id == OCEAN || id == RIVER;
     }
 }
