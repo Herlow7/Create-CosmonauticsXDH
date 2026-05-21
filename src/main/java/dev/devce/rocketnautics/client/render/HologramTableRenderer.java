@@ -25,10 +25,13 @@ import net.minecraft.util.FastColor;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import org.hipparchus.geometry.euclidean.threed.Rotation;
+import org.hipparchus.geometry.euclidean.threed.RotationConvention;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.jspecify.annotations.NonNull;
 import org.orekit.frames.Frame;
@@ -51,13 +54,13 @@ public class HologramTableRenderer extends SafeBlockEntityRenderer<HologramTable
     @Override
     protected void renderSafe(HologramTableBlockEntity be, float partialTicks, PoseStack ms, MultiBufferSource bufferSource, int light, int overlay) {
         UniverseDefinition universe = DeepSpaceHandler.getUniverse();
-        if (!DeepSpaceHandler.hasReceivedPosition() || universe == null || be.getLevel() == null) return;
+        if (universe == null || be.getLevel() == null) return;
         final int holoSize = be.getHoloSize();
         final double holoScale = be.getHoloScale();
         DeepSpacePosition position = null;
         AbsoluteDate renderDate;
         long renderTicks = Minecraft.getInstance().levelRenderer.getTicks();
-        if (DeepSpaceData.isDeepSpace(be.getLevel())) {
+        if (DeepSpaceHandler.hasReceivedPosition() && DeepSpaceData.isDeepSpace(be.getLevel())) {
             position = DeepSpaceHandler.getReceivedPosition();
             renderDate = DeepSpaceHandler.getRenderDate(partialTicks);
         } else {
@@ -114,6 +117,18 @@ public class HologramTableRenderer extends SafeBlockEntityRenderer<HologramTable
                     ms.pushPose();
                     PVCoordinates c = planet.getPVCoordinates(renderDate, largestFrame);
                     ms.translate(c.getPosition().getX() * scaleFactor, c.getPosition().getY() * scaleFactor, c.getPosition().getZ() * scaleFactor);
+
+//                    Vector3D ct1 = new Vector3D(0, 0.3, 0);
+//                    Rotation rotation = planet.getRotationAtTime(renderDate);
+//                    rotation = rotation.compose(new Rotation(Vector3D.PLUS_J, Vector3D.PLUS_K), RotationConvention.VECTOR_OPERATOR);
+//                    ct1 = rotation.applyTo(ct1);
+//                    Vector3D ct2 = planet.rotationDescription().getRotationRate().scalarMultiply(100);
+//                    DebugRenderer.renderFilledBox(ms, bufferSource, ct1.getX() - s, ct1.getY() - s, ct1.getZ() - s, ct2.getX() + s, ct2.getY() + s, ct2.getZ() + s, 1, 1, 1, 1);
+//
+//                    if (planet.orekitFrame() == largestFrame) {
+//                        ms.popPose();
+//                        continue;
+//                    }
                     renderVelocityVector(c.getVelocity(), bufferSource, ms, camera);
                     ms.popPose();
                     iter = DeepSpaceHandler.getPredictionDates(count)

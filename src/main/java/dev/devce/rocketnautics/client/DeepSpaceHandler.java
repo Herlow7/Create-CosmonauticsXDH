@@ -62,6 +62,8 @@ public final class DeepSpaceHandler {
         receivedPosition.reset();
         nextPrediction.reset();
         receivedPositionTick = -1;
+        KNOWN_RENDER_DATA.values().forEach(p -> p.right().retire());
+        KNOWN_RENDER_DATA.clear();
     }
 
     public static boolean hasReceivedPosition() {
@@ -338,7 +340,7 @@ public final class DeepSpaceHandler {
         List<CubePlanet> renderedPlanets = new ArrayList<>();
         IntList needRenderData = new IntArrayList();
         Iterator<Pair<Vector3D, CubePlanet>> iter = universe.getPlanets().stream()
-                .map(planet -> Pair.of(planet.posInMyFrame(date, posInFrame, receivedPosition.getFrame()), planet))
+                .map(planet -> Pair.of(planet.posInMyFrame(date, posInFrame, posFrame), planet))
                 .filter(pair -> pair.left().getNormSq() < scaleTest * scaleTest)
                 .filter(pair -> pair.right().radius() < scaleTest).iterator();
         while (iter.hasNext()) {

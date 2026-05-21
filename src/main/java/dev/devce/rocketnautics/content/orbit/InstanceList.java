@@ -2,12 +2,11 @@ package dev.devce.rocketnautics.content.orbit;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
 import it.unimi.dsi.fastutil.ints.IntHeapPriorityQueue;
-import it.unimi.dsi.fastutil.ints.IntPriorityQueue;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.ChunkPos;
 import org.jetbrains.annotations.Nullable;
 
 public final class InstanceList {
@@ -60,9 +59,9 @@ public final class InstanceList {
 
     public DeepSpaceInstance createInstance(DeepSpaceData manager) {
         int id = freedIDs.isEmpty() ? instances.size() : freedIDs.dequeueInt();
-        int[] corners = DeepSpaceData.getCornerXCornerZForParameters(chunkPowerSize, id);
+        ChunkPos corner = DeepSpaceData.getMinCornerForParameters(chunkPowerSize, id);
         long packedID = DeepSpaceData.pack(chunkPowerSize, id);
-        DeepSpaceInstance constructed = new DeepSpaceInstance(manager, 16 * (2 << chunkPowerSize), corners[0], corners[1], packedID);
+        DeepSpaceInstance constructed = new DeepSpaceInstance(manager, (2 << chunkPowerSize), corner, packedID);
         instances.put(id, constructed);
         return constructed;
     }

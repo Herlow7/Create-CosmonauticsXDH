@@ -21,6 +21,7 @@ import org.orekit.time.AbsoluteDate;
 import org.orekit.utils.TimeStampedAngularCoordinates;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
+import java.util.function.DoubleUnaryOperator;
 import java.util.function.IntFunction;
 
 public class PlanetDefinitionBuilder {
@@ -52,27 +53,17 @@ public class PlanetDefinitionBuilder {
         this.parent = parent;
     }
 
-    public void build() {
+    public CubePlanet build() {
         if (radius <= 0 || frameName == null) {
             throw new IllegalStateException("Builder not fully/properly initialized!");
         }
-        // mu / radius^2 = acceleration at surface
-        if (mu <= 0) {
-            if (accelerationAtSurface <= 0) {
-                throw new IllegalStateException("Builder not fully/properly initialized!");
-            }
-            mu = accelerationAtSurface * radius * radius;
-        }
         FrameTree ourFrame;
         KeplerianOrbit orbit = null;
-        double roi;
         if (orbited != null) {
             orbit = new KeplerianOrbit(orbitCoords, orbited.orekitFrame(), orbited.mu());
             ourFrame = orbited.frame().createChild(frameName, orbit);
-            roi = orbit.getA() * Math.pow(mu / orbited.mu(), 2/5d);
         } else if (fixedPositionParentFrame != null) {
             ourFrame = fixedPositionParentFrame.createChild(frameName, fixedPosition);
-            roi = Double.POSITIVE_INFINITY;
         } else {
             throw new IllegalStateException("Builder does not have an orbit or a fixed position!");
         }
@@ -84,16 +75,23 @@ public class PlanetDefinitionBuilder {
                 assert orbit != null;
                 double periodSeconds = orbit.getKeplerianPeriod();
                 ticksPerRevolution = (int) (periodSeconds * 20);
-                // TODO check if this needs to be negated to properly tidal lock
-                rotationAxis = DeepSpaceHelper.adapt(orbit.getPVCoordinates().getMomentum());
+                rotationAxis = DeepSpaceHelper.adapt(orbit.getPVCoordinates().getMomentum()).negate();
             } else if (ticksPerRevolution <= 0 || rotationAxis == null) {
                 throw new IllegalStateException("Builder does not have a revolution time configured!");
             }
             // compute angular coordinates
             // magnitude of rotation axis needs to be angular velocity, or 2pi / period in seconds
             double mul = 40 * Math.PI / (ticksPerRevolution * rotationAxis.length());
-            Vector3D angVel = new Vector3D(rotationAxis.x * mul, rotationAxis.y * mul, rotationAxis.z * mu);
+            Vector3D angVel = new Vector3D(rotationAxis.x * mul, rotationAxis.y * mul, rotationAxis.z * mul);
             this.angularCoordinates = new TimeStampedAngularCoordinates(DeepSpaceData.EPOCH, Rotation.IDENTITY, angVel, Vector3D.ZERO);
+        }
+        // mu / radius^2 = acceleration at surface + centrifugal acceleration
+        if (mu <= 0) {
+            if (accelerationAtSurface <= 0) {
+                throw new IllegalStateException("Builder not fully/properly initialized!");
+            }
+            double centrifugal = angularCoordinates.getRotationRate().getNormSq() * radius;
+            mu = (accelerationAtSurface + centrifugal) * radius * radius;
         }
         if (renderDataOverride == null) {
             if (linkedDimension == null) {
@@ -105,8 +103,11 @@ public class PlanetDefinitionBuilder {
                 return SkyDataHandler.getHandlerForLevel(level).getRenderDataForDeepSpace(i);
             };
         }
+        double roi = orbit == null ? Double.POSITIVE_INFINITY : orbit.getA() * Math.pow(mu / orbited.mu(), 2/5d);
         parent.gravitySource(new PointGravitySource(ourFrame, mu, roi));
-        parent.cubePlanet(new CubePlanet(ourFrame, radius, angularCoordinates, constructDimensionData(), renderDataOverride, clouds));
+        CubePlanet p = new CubePlanet(ourFrame, radius, angularCoordinates, constructDimensionData(), renderDataOverride, clouds);
+        parent.cubePlanet(p);
+        return p;
     }
 
     protected PlanetDimensionData constructDimensionData() {
@@ -142,6 +143,12 @@ public class PlanetDefinitionBuilder {
         return this;
     }
 
+    public PlanetDefinitionBuilder radiusFromDistance(DoubleUnaryOperator distanceToRadius) {
+        if (orbitCoords == null) throw new IllegalStateException("Builder does not know what it is orbiting!");
+        this.radius = distanceToRadius.applyAsDouble(orbitCoords.getPosition().getNorm());
+        return this;
+    }
+
     public PlanetDefinitionBuilder setRotationAxis(Vector3d rotationAxis) {
         this.rotationAxis = rotationAxis;
         return this;
@@ -153,9 +160,6 @@ public class PlanetDefinitionBuilder {
     }
 
     public PlanetDefinitionBuilder setTidalLocked() {
-        if (this.orbited == null) {
-            throw new IllegalStateException("Builder does not have an orbit!");
-        }
         tidalLock = true;
         return this;
     }
@@ -189,6 +193,30 @@ public class PlanetDefinitionBuilder {
     public PlanetDefinitionBuilder setCircularOrbit(@NotNull PointGravitySource orbited, @NotNull Vector3D position, @NotNull Vector3D orbitAxis, @NotNull AbsoluteDate positionDate) {
         this.orbited = orbited;
         double velMagnitudeSquared = this.orbited.mu() / position.getNorm();
+        Vector3D vel = orbitAxis.crossProduct(position);
+        vel = vel.scalarMultiply(Math.sqrt(velMagnitudeSquared / vel.getNormSq()));
+        this.orbitCoords = new TimeStampedPVCoordinates(positionDate, position, vel);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setCircularOrbit(@NotNull String gravitySourceName, double orbitPeriodSecs, @NotNull Vector3D orbitAxis) {
+        return setCircularOrbit(parent.getGravitySource(parent.getFrameByName(gravitySourceName), false), orbitPeriodSecs, orbitAxis);
+    }
+
+    public PlanetDefinitionBuilder setCircularOrbit(@NotNull PointGravitySource orbited, double orbitPeriodSecs, @NotNull Vector3D orbitAxis) {
+        return this.setCircularOrbit(orbited, orbitPeriodSecs, orbitAxis, orbitAxis.orthogonal(), DeepSpaceData.EPOCH);
+    }
+
+    public PlanetDefinitionBuilder setCircularOrbit(@NotNull String gravitySourceName, double orbitPeriodSecs, @NotNull Vector3D orbitAxis, @NotNull Vector3D positionDirection, @NotNull AbsoluteDate positionDate) {
+        return setCircularOrbit(parent.getGravitySource(parent.getFrameByName(gravitySourceName), false), orbitPeriodSecs, orbitAxis,positionDirection, positionDate);
+    }
+
+    public PlanetDefinitionBuilder setCircularOrbit(@NotNull PointGravitySource orbited, double orbitPeriodSecs, @NotNull Vector3D orbitAxis, Vector3D positionDirection, @NotNull AbsoluteDate positionDate) {
+        this.orbited = orbited;
+        double comp = orbitPeriodSecs / (2 * Math.PI);
+        double r = Math.cbrt(orbited.mu() * comp * comp);
+        Vector3D position = positionDirection.scalarMultiply(r / positionDirection.getNorm());
+        double velMagnitudeSquared = this.orbited.mu() / r;
         Vector3D vel = orbitAxis.crossProduct(position);
         vel = vel.scalarMultiply(Math.sqrt(velMagnitudeSquared / vel.getNormSq()));
         this.orbitCoords = new TimeStampedPVCoordinates(positionDate, position, vel);

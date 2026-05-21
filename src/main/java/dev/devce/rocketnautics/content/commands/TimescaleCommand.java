@@ -20,7 +20,7 @@ public final class TimescaleCommand {
         dispatcher.register(Commands.literal("rn")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("timescale")
-                        .then(Commands.argument("value", IntegerArgumentType.integer(1, 1000))
+                        .then(Commands.argument("value", IntegerArgumentType.integer(-10000, 10000))
                                 .executes(context -> {
                                     int value = IntegerArgumentType.getInteger(context, "value");
                                     ServerPlayer player = context.getSource().getPlayer();

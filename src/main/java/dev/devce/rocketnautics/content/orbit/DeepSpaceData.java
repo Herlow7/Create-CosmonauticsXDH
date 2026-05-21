@@ -4,7 +4,6 @@ import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.content.orbit.universe.StandardUniverseProvider;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import dev.devce.rocketnautics.network.UniverseDefinitionPayload;
-import dev.ryanhcode.sable.platform.SableEventPlatform;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
@@ -17,6 +16,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
@@ -92,7 +92,6 @@ public class DeepSpaceData extends SavedData {
         universeTicks += 1;
         instances.values().forEach(i -> i.tick(server));
         setDirty();
-        if (instances.isEmpty()) debugInstance();
     }
 
     private void debugInstance() {
@@ -198,18 +197,18 @@ public class DeepSpaceData extends SavedData {
     public static VoxelShape getColliderForPosition(Vec3 position) {
         // compute the instance we are in
         int[] sizeAndId = getChunkPowerSizeIdWithinSizeForParameters((int) position.x, (int) position.z);
-        int[] corners = getCornerXCornerZForParameters(sizeAndId[0], sizeAndId[1]);
+        ChunkPos corner = getMinCornerForParameters(sizeAndId[0], sizeAndId[1]);
         int blockSize = 16 * (2 << sizeAndId[0]);
         // subtract the instance bounds from the infinity box
         return Shapes.join(
                 Shapes.INFINITY,
                 Shapes.box(
-                        corners[0],
+                        corner.getMinBlockX(),
                         LOGICAL_INSTANCE_HEIGHT,
-                        corners[1],
-                        corners[0] + blockSize + 1,
+                        corner.getMinBlockZ(),
+                        corner.getMinBlockX() + blockSize + 1,
                         LOGICAL_INSTANCE_HEIGHT + blockSize + 1,
-                        corners[1] + blockSize + 1
+                        corner.getMinBlockZ() + blockSize + 1
                 ),
                 BooleanOp.ONLY_FIRST
         );
@@ -233,8 +232,8 @@ public class DeepSpaceData extends SavedData {
         return new int[] { chunkPowerSize, negZ / (16 + size) };
     }
 
-    public static int[] getCornerXCornerZForParameters(int chunkPowerSize, int idWithinSize) {
+    public static ChunkPos getMinCornerForParameters(int chunkPowerSize, int idWithinSize) {
         int chunkSize = 2 << chunkPowerSize;
-        return new int[] { 16 * (chunkPowerSize * 16 + chunkSize), 16 * (idWithinSize * (16 + chunkSize)) };
+        return new ChunkPos((chunkPowerSize * 16 + chunkSize), (idWithinSize * (16 + chunkSize)));
     }
 }

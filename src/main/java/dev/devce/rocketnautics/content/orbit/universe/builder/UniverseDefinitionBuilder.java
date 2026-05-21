@@ -72,4 +72,8 @@ public class UniverseDefinitionBuilder {
         op.apply(new PlanetDefinitionBuilder(this)).build();
         return this;
     }
+
+    public CubePlanet cubePlanetAndGet(UnaryOperator<PlanetDefinitionBuilder> op) {
+        return op.apply(new PlanetDefinitionBuilder(this)).build();
+    }
 }

@@ -63,10 +63,18 @@ public class DeepSpacePosition {
             // we know the point is between the time we were at and the time we are now at.
             // we solve this numerically via Brent's Method.
             AbsoluteDate startTime = DeepSpaceData.getTime(localUniverseTicks);
-            double roi = Math.min(this.roi, shouldControlling.roi());
+            double roi;
+            Frame roiFrame;
+            if (this.roi < shouldControlling.roi()) {
+                roi = this.roi;
+                roiFrame = currentOrbit.getFrame();
+            } else {
+                roi = shouldControlling.roi();
+                roiFrame = shouldControlling.orekitFrame();
+            }
             UnivariateFunction func = t -> {
                 AbsoluteDate time = startTime.shiftedBy(t / 20); // convert from floating ticks to seconds
-                return currentOrbit.getPosition(time, currentOrbit.getFrame()).getNormSq() - roi * roi;
+                return currentOrbit.getPosition(time, roiFrame).getNormSq() - roi * roi;
             };
             // verify that there is supposed to be a zero
             double lower = func.value(0);

@@ -222,7 +222,7 @@ public class DeepSpaceHelper {
 
 
     public static Quaterniond adapt(Rotation rot) {
-        return new Quaterniond(rot.getQ1(), rot.getQ2(), rot.getQ3(), rot.getQ0());
+        return new Quaterniond(-rot.getQ1(), -rot.getQ2(), -rot.getQ3(), rot.getQ0());
     }
 
     public static Rotation adapt(Quaterniondc rot) {

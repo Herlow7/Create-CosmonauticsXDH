@@ -73,7 +73,7 @@ public class HologramTableBlockEntity extends SmartBlockEntity {
         public HologramTableScrollValueBehavior(final HologramTableBlockEntity be) {
             super(Component.empty(), be, new HologramTableValueBox(be));
             this.primaryValue = 2;
-            this.secondaryValue = 24;
+            this.secondaryValue = 25;
         }
 
         public boolean isPrimaryAxis() {

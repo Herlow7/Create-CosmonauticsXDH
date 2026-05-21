@@ -68,6 +68,10 @@ public final class DeepSpaceTexture {
         return new DeepSpaceTexture(constructed, claimed);
     }
 
+    public void retire() {
+        Minecraft.getInstance().getTextureManager().release(id);
+    }
+
     public ResourceLocation getId() {
         return id;
     }
