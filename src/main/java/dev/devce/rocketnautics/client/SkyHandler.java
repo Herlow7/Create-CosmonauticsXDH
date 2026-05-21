@@ -7,9 +7,11 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
+import dev.devce.rocketnautics.RocketConfig;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
+import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.network.PlanetMapRequestPayload;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -73,7 +75,7 @@ public class SkyHandler {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
         
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return;
+        if (mc.level == null || mc.player == null || DeepSpaceData.isDeepSpace()) return;
 
         Camera camera = mc.gameRenderer.getMainCamera();
         double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
@@ -101,7 +103,7 @@ public class SkyHandler {
 
         int renderDist = mc.options.renderDistance().get();
         // Calculate parallax based on altitude: higher means less parallax (planet seems further)
-        float parallaxFactor = (float) (renderDist / Math.max(100.0, camY)); 
+        float parallaxFactor = (float) (renderDist / Math.max(100.0, camY));
         double camX = camera.getPosition().x;
         double camZ = camera.getPosition().z;
 
@@ -109,7 +111,7 @@ public class SkyHandler {
         ensurePlanetTexObj();
         ensureCloudTexture();
         ensureHaloTexture();
-        
+
         // Request map updates from server if player moved too far
         updatePlanetTex(camX, camY, camZ);
         
@@ -121,7 +123,6 @@ public class SkyHandler {
         // Render planet with layered effects (Map + Clouds + Halo)
         renderPlanet(PLANET_TEXTURE_OBJ_LAST, camX, camY, camZ, renderDist, parallaxFactor, matrix, texFade * visibility, celestialAngle);
         renderPlanet(PLANET_TEXTURE_OBJ, camX, camY, camZ, renderDist, parallaxFactor, matrix, (1 - texFade) * visibility, celestialAngle);
-        
         poseStack.popPose();
     }
 
@@ -130,7 +131,7 @@ public class SkyHandler {
      */
     private static void renderPlanet(PlanetRenderInfo planet, double camX, double camY, double camZ, float renderDist, float parallaxFactor, Matrix4f matrix, float visibility, float celestialAngle) {
         if (visibility <= 0) return;
-        
+
         // Calculate relative position based on parallax
         float relX = (float) ((planet.getCenterX() - camX) * parallaxFactor);
         float relY = -renderDist; // Render "below" the player
@@ -153,7 +154,7 @@ public class SkyHandler {
         RenderSystem.depthMask(false);
         RenderSystem.disableDepthTest();
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        
+
         // --- Layer 1: Planet Surface Map ---
         if (planet.getTexID() != null) {
             RenderSystem.setShaderTexture(0, planet.getTexID());
@@ -297,10 +298,8 @@ public class SkyHandler {
         }
     }
 
-    private static int getMaximumScale() {
-        
-        
-        return 100;
+    public static int getMaximumScale() {
+        return RocketConfig.CLIENT.planetRenderMaximumScale.getAsInt();
     }
 
     private static void updatePlanetTex(double camX, double camY, double camZ) {
@@ -370,139 +369,131 @@ public class SkyHandler {
         Minecraft mc = Minecraft.getInstance();
         mc.execute(() -> {
             if (PLANET_TEXTURE_OBJ == null) return;
-            
-            int texSize = 1024;
-            int virtualSize = 256; // virtual size for a gorgeous clean retro pixel art style
-            int blockSize = texSize / virtualSize; // 4x4 blocks in the 1024x1024 texture
-            
-            NativeImage image = new NativeImage(texSize, texSize, false);
-            byte[] virtualBiomes = new byte[virtualSize * virtualSize];
-            
-            // Pass 1: Compute smoothed metaball-like biomes on the virtual grid
-            for (int vy = 0; vy < virtualSize; vy++) {
-                for (int vx = 0; vx < virtualSize; vx++) {
-                    double u = (vx / (double)virtualSize) * 512.0;
-                    double v = (vy / (double)virtualSize) * 512.0;
-                    
-                    // Smooth wave distortion for organic borders
-                    double nx = u * 0.1;
-                    double ny = v * 0.1;
-                    double warpX = (Math.sin(nx) + 0.5 * Math.sin(nx * 2.1)) * 1.5;
-                    double warpY = (Math.cos(ny) + 0.5 * Math.cos(ny * 2.1)) * 1.5;
-                    double wu = u + warpX;
-                    double wv = v + warpY;
-                    
-                    int cx = (int) Math.round(wu);
-                    int cy = (int) Math.round(wv);
-                    
-                    float[] influence = new float[11];
-                    double radius = 3.2;
-                    double radiusSq = radius * radius;
-                    
-                    for (int dx = -3; dx <= 3; dx++) {
-                        for (int dy = -3; dy <= 3; dy++) {
-                            int gx = cx + dx;
-                            int gy = cy + dy;
-                            byte biome = getBiomeAt(gx, gy, mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ);
-                            
-                            double distX = wu - (gx + 0.5);
-                            double distY = wv - (gy + 0.5);
-                            double dSq = distX * distX + distY * distY;
-                            
-                            if (dSq < radiusSq) {
-                                // Smooth drop-off weight function: (1 - d^2 / R^2)^3
-                                double ratio = dSq / radiusSq;
-                                double term = 1.0 - ratio;
-                                double weight = term * term * term;
-                                
-                                // Boost landmasses slightly for tighter shores
-                                if (biome != 0 && biome != 1) {
-                                    influence[biome] += (float) (weight * 1.1);
-                                } else {
-                                    influence[biome] += (float) weight;
-                                }
-                            }
-                        }
-                    }
-                    
-                    int bestBiome = 4;
-                    float maxInfluence = -1;
-                    for (int b = 0; b < 11; b++) {
-                        if (influence[b] > maxInfluence) {
-                            maxInfluence = influence[b];
-                            bestBiome = b;
-                        }
-                    }
-                    virtualBiomes[vx + vy * virtualSize] = (byte) bestBiome;
-                }
-            }
-            
-            // Pass 2: Color, Shade, and Draw the 3D-embossed pixel art planet
-            for (int vy = 0; vy < virtualSize; vy++) {
-                for (int vx = 0; vx < virtualSize; vx++) {
-                    byte colorIdx = virtualBiomes[vx + vy * virtualSize];
-                    
-                    int r = 30, g = 120, b = 40;
-                    switch (colorIdx) {
-                        case 0: r = 15; g = 45; b = 135; break;  // Ocean (Curated deep royal blue)
-                        case 1: r = 25; g = 95; b = 215; break;  // River (Vibrant blue)
-                        case 2: r = 225; g = 205; b = 155; break; // Beach (Warm sand)
-                        case 3: r = 215; g = 195; b = 115; break; // Desert (Golden sand)
-                        case 4: r = 45; g = 145; b = 55; break;   // Plain (Emerald green)
-                        case 5: r = 25; g = 105; b = 35; break;   // Forest (Lush dark forest green)
-                        case 6: r = 15; g = 85; b = 25; break;    // Jungle (Deep jungle teal-green)
-                        case 7: r = 30; g = 75; b = 55; break;    // Taiga (Cool pine green)
-                        case 8: r = 240; g = 240; b = 245; break; // Snowy (Pristine snow white)
-                        case 9: r = 195; g = 90; b = 40; break;   // Badlands (Terracotta orange)
-                        case 10: r = 135; g = 135; b = 135; break;// Mountain (Slate grey)
-                    }
-                    
-                    // Dynamic 3D pixel-art coastline shading
-                    boolean isWater = (colorIdx == 0 || colorIdx == 1);
-                    if (isWater) {
-                        // Shadow cast ONTO water from top-left land
-                        int tlx = vx - 1;
-                        int tly = vy - 1;
-                        if (tlx >= 0 && tly >= 0) {
-                            byte neighborBiome = virtualBiomes[tlx + tly * virtualSize];
-                            boolean neighborIsLand = (neighborBiome != 0 && neighborBiome != 1);
-                            if (neighborIsLand) {
-                                r = (int) (r * 0.75);
-                                g = (int) (g * 0.75);
-                                b = (int) (b * 0.75);
-                            }
-                        }
-                    } else {
-                        // Border depth cast ONTO neighboring bottom-right water
-                        int brx = vx + 1;
-                        int bry = vy + 1;
-                        if (brx < virtualSize && bry < virtualSize) {
-                            byte neighborBiome = virtualBiomes[brx + bry * virtualSize];
-                            boolean neighborIsWater = (neighborBiome == 0 || neighborBiome == 1);
-                            if (neighborIsWater) {
-                                r = (int) (r * 0.85);
-                                g = (int) (g * 0.85);
-                                b = (int) (b * 0.85);
-                            }
-                        }
-                    }
-                    
-                    int color = (255 << 24) | (b << 16) | (g << 8) | r;
-                    for (int bx = 0; bx < blockSize; bx++) {
-                        for (int by = 0; by < blockSize; by++) {
-                            image.setPixelRGBA(vx * blockSize + bx, vy * blockSize + by, color);
-                        }
-                    }
-                }
-            }
-            
+
+            NativeImage image = composePlanetTexture(512, (x, y) -> getBiomeAt(x, y, mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ));
+
             PLANET_TEXTURE_OBJ.getTexture().setPixels(image);
             PLANET_TEXTURE_OBJ.getTexture().upload();
             PLANET_TEXTURE_OBJ.getTexture().setFilter(false, false);
             image.close();
             awaitUpdate = false;
         });
-    }        
+    }
+
+    public static NativeImage composePlanetTexture(int renderDataSize, RenderDataSelector selector) {
+        int texSize = 1024;
+        int virtualSize = 256; // virtual size for a gorgeous clean retro pixel art style
+        int blockSize = texSize / virtualSize; // 4x4 blocks in the 1024x1024 texture
+
+        NativeImage image = new NativeImage(texSize, texSize, false);
+        byte[] virtualBiomes = new byte[virtualSize * virtualSize];
+
+        // Pass 1: Compute smoothed metaball-like biomes on the virtual grid
+        for (int vy = 0; vy < virtualSize; vy++) {
+            for (int vx = 0; vx < virtualSize; vx++) {
+                double u = (vx / (double)virtualSize) * renderDataSize;
+                double v = (vy / (double)virtualSize) * renderDataSize;
+
+                // Smooth wave distortion for organic borders
+                double nx = u * 0.1;
+                double ny = v * 0.1;
+                double warpX = (Math.sin(nx) + 0.5 * Math.sin(nx * 2.1)) * 1.5;
+                double warpY = (Math.cos(ny) + 0.5 * Math.cos(ny * 2.1)) * 1.5;
+                double wu = u + warpX;
+                double wv = v + warpY;
+
+                int cx = (int) Math.round(wu);
+                int cy = (int) Math.round(wv);
+
+                float[] influence = new float[PlanetColors.getReservedCount()];
+                double radius = 3.2;
+                double radiusSq = radius * radius;
+
+                for (int dx = -3; dx <= 3; dx++) {
+                    for (int dy = -3; dy <= 3; dy++) {
+                        int gx = cx + dx;
+                        int gy = cy + dy;
+                        byte biome = selector.select(Mth.clamp(gx, 0, renderDataSize - 1), Mth.clamp(gy, 0, renderDataSize - 1));
+
+                        double distX = wu - (gx + 0.5);
+                        double distY = wv - (gy + 0.5);
+                        double dSq = distX * distX + distY * distY;
+
+                        if (dSq < radiusSq) {
+                            // Smooth drop-off weight function: (1 - d^2 / R^2)^3
+                            double ratio = dSq / radiusSq;
+                            double term = 1.0 - ratio;
+                            double weight = term * term * term;
+
+                            // Boost landmasses slightly for tighter shores
+                            if (!PlanetColors.isWater(biome)) {
+                                influence[biome] += (float) (weight * 1.1);
+                            } else {
+                                influence[biome] += (float) weight;
+                            }
+                        }
+                    }
+                }
+
+                int bestBiome = PlanetColors.FALLBACK;
+                float maxInfluence = -1;
+                for (int b = 0; b < 11; b++) {
+                    if (influence[b] > maxInfluence) {
+                        maxInfluence = influence[b];
+                        bestBiome = b;
+                    }
+                }
+                virtualBiomes[vx + vy * virtualSize] = (byte) bestBiome;
+            }
+        }
+
+        // Pass 2: Color, Shade, and Draw the 3D-embossed pixel art planet
+        for (int vy = 0; vy < virtualSize; vy++) {
+            for (int vx = 0; vx < virtualSize; vx++) {
+                byte colorIdx = virtualBiomes[vx + vy * virtualSize];
+
+                int[] unpacked = PlanetColors.getUnpackedColorARGB(colorIdx);
+                int r = unpacked[1];
+                int g = unpacked[2];
+                int b = unpacked[3];
+
+                // Dynamic 3D pixel-art coastline shading
+                if (PlanetColors.isWater(colorIdx)) {
+                    // Shadow cast ONTO water from top-left land
+                    int tlx = vx - 1;
+                    int tly = vy - 1;
+                    if (tlx >= 0 && tly >= 0) {
+                        byte neighborBiome = virtualBiomes[tlx + tly * virtualSize];
+                        if (!PlanetColors.isWater(neighborBiome)) {
+                            r = (int) (r * 0.75);
+                            g = (int) (g * 0.75);
+                            b = (int) (b * 0.75);
+                        }
+                    }
+                } else {
+                    // Border depth cast ONTO neighboring bottom-right water
+                    int brx = vx + 1;
+                    int bry = vy + 1;
+                    if (brx < virtualSize && bry < virtualSize) {
+                        byte neighborBiome = virtualBiomes[brx + bry * virtualSize];
+                        if (PlanetColors.isWater(neighborBiome)) {
+                            r = (int) (r * 0.85);
+                            g = (int) (g * 0.85);
+                            b = (int) (b * 0.85);
+                        }
+                    }
+                }
+
+                int color = (unpacked[0] << 24) | (b << 16) | (g << 8) | r;
+                for (int bx = 0; bx < blockSize; bx++) {
+                    for (int by = 0; by < blockSize; by++) {
+                        image.setPixelRGBA(vx * blockSize + bx, vy * blockSize + by, color);
+                    }
+                }
+            }
+        }
+        return image;
+    }
 
     private static ResourceLocation CLOUD_TEXTURE_ID = null;
     private static DynamicTexture CLOUD_TEXTURE_OBJ = null;
@@ -519,7 +510,7 @@ public class SkyHandler {
         
         java.util.Random rand = new java.util.Random(1337L);
         Noise2D noiseGen = new Noise2D(64, rand);
-        
+
         for (int x = 0; x < size; x++) {
             for (int y = 0; y < size; y++) {
                 float u = (x / (float)size) * 8.0f;
@@ -610,7 +601,7 @@ public class SkyHandler {
                     float smoothDensity = density * density * (3.0f - 2.0f * density);
                     alpha = (int) (smoothDensity * 245.0f); // Solid white centers (max opacity 245)
                 }
-                
+
                 int color = (alpha << 24) | (255 << 16) | (255 << 8) | 255;
                 image.setPixelRGBA(x, y, color);
             }
@@ -730,8 +721,6 @@ public class SkyHandler {
     }
 
     private static byte getBiomeAt(int gx, int gy, byte[] posPos, byte[] posNeg, byte[] negPos, byte[] negNeg) {
-        gx = Math.max(0, Math.min(gx, 511));
-        gy = Math.max(0, Math.min(gy, 511));
         int dataSize = 256;
         if (gx >= dataSize) {
             int sx = gx - dataSize;

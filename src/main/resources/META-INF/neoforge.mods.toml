@@ -35,3 +35,10 @@ An addon for Create Aeronautics adding Rocket Thrusters! Now rebranded as Cosmon
     versionRange="[1.0.0,)"
     ordering="NONE"
     side="BOTH"
+
+[[dependencies.rocketnautics]]
+    modId="dimensional_sable"
+    type="required"
+    versionRange="[1.0,)"
+    ordering="NONE"
+    side="BOTH"

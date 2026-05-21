@@ -1,6 +1,7 @@
 package dev.devce.rocketnautics.content.physics;
 
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.network.ReentryHeatPayload;
 import dev.devce.rocketnautics.registry.RocketParticles;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -261,7 +262,7 @@ public class GlobalSpacePhysicsHandler {
         }
 
         // Space dimension is always zero gravity
-        if (level.dimension().location().getPath().equals("space")) {
+        if (level.dimension().location().getPath().equals("space") || DeepSpaceData.isDeepSpace(level)) {
             return 1.0;
         }
 
@@ -280,7 +281,7 @@ public class GlobalSpacePhysicsHandler {
         double density = 1.0 - calculateGravityFactor(level, altitude);
         if (density < 0.05) return; // Too thin to cause stress
 
-        Vector3d velocity = new Vector3d(handle.getLinearVelocity());
+        Vector3d velocity = handle.getLinearVelocity(new Vector3d());
         double speedSq = velocity.lengthSquared();
         double stress = density * speedSq;
 
@@ -356,7 +357,7 @@ public class GlobalSpacePhysicsHandler {
         // Reentry effects occur between 1000m and 2500m
         if (y > REENTRY_HEAT_END_Y || y < REENTRY_HEAT_START_Y) return;
 
-        Vector3d velocity = new Vector3d(handle.getLinearVelocity());
+        Vector3d velocity = handle.getLinearVelocity(new Vector3d());
         double descentSpeed = -velocity.y();
 
         if (descentSpeed > REENTRY_SPEED_THRESHOLD) {
