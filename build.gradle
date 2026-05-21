@@ -125,16 +125,7 @@ dependencies {
     runtimeOnly("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_version}")
 
     shade("org.luaj:luaj-jse:3.0.1")
-
-    // orekit
-
-    jarJar(implementation('org.orekit:orekit')) {
-        version {
-            strictly '[13.1.4,)'
-            prefer '13.1.4'
-        }
-    }
-    additionalRuntimeClasspath 'org.orekit:orekit:13.1.4'
+    shade('org.orekit:orekit:13.1.4')
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
@@ -159,7 +150,12 @@ shadowJar {
     archiveClassifier.set('')
     configurations = [project.configurations.shade]
     relocate 'org.luaj', 'dev.devce.rocketnautics.shaded.luaj'
+    relocate 'org.orekit', 'dev.devce.rocketnautics.shaded.orekit'
+    relocate 'org.hipparchus', 'dev.devce.rocketnautics.shaded.hipparchus'
     mergeServiceFiles()
+    minimize {
+        exclude("org.luaj")
+    }
 }
 
 tasks.named('jar') {
