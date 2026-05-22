@@ -1,0 +1,10 @@
+{
+  "stages": [
+    {
+      "type": "veil:blit",
+      "shader": "rocketnautics:shockwave",
+      "in": "minecraft:main"
+    }
+  ],
+  "renderStage": "after_level"
+}

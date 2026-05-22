@@ -6,12 +6,14 @@
   "mixins": [
     "EntityMixin",
     "LivingEntityAccessor",
-    "LivingEntityMixin"
+    "LivingEntityMixin",
+    "SubLevelPhysicsSystemMixin",
+    "SubLevelWarperMixin"
   ],
   "client": [
     "ClientLevelMixin",
-    "LevelRendererMixin",
     "ClientPacketListenerMixin",
+    "LevelRendererMixin",
     "MinecraftMixin"
   ],
   "injectors": {

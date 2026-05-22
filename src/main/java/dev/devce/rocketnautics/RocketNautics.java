@@ -7,13 +7,16 @@ import dev.devce.rocketnautics.content.blocks.LinkedSignalHandler;
 import dev.devce.rocketnautics.content.commands.GravityCommand;
 import dev.devce.rocketnautics.content.commands.JetpackCommand;
 import dev.devce.rocketnautics.content.commands.ShipCopyPasteCommand;
+import dev.devce.rocketnautics.content.commands.TimescaleCommand;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.data.RocketDatagen;
 import dev.devce.rocketnautics.network.NetworkHandler;
 import dev.devce.rocketnautics.registry.*;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -23,6 +26,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import dev.devce.websnodelib.internal.InternalNodes;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
@@ -116,6 +120,7 @@ public class RocketNautics {
         JetpackCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.AsteroidCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.BreakBarrierCommand.register(event.getDispatcher());
+        TimescaleCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent
@@ -128,6 +133,20 @@ public class RocketNautics {
             LOGGER.error("Failed to override SableConfig in ServerAboutToStartEvent: {}", e.getMessage());
         }
     }
+
+    /**
+     * Temporary fix for <a href="https://github.com/ryanhcode/sable/issues/919">Sable issue #919</a>
+     * that corrupts the world when logging out while seated on a sublevel outside the overworld.
+     */
+    @SubscribeEvent
+    public void preventWorldCorruptionOnSeatedLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide() || !player.isPassenger()) return;
+        if (player.level().dimension() != Level.OVERWORLD) {
+            player.stopRiding();
+        }
+    }
+
     @SubscribeEvent
     public void onLevelTick(LevelTickEvent.Post event) {
     }

@@ -3,6 +3,8 @@ package dev.devce.rocketnautics.compat.computercraft;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.IPeripheral;
 import dev.devce.rocketnautics.content.blocks.SputnikBlockEntity;
+import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
+import dev.ryanhcode.sable.physics.config.dimension_physics.DimensionPhysicsData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -107,8 +109,11 @@ public class SputnikPeripheral implements IPeripheral {
             data.put("velocity", velData);
 
             // Local Gravity approximation (if needed by flight computers)
-            boolean inSpace = sputnik.getLevel().dimension() == dev.devce.rocketnautics.content.physics.SpaceTransitionHandler.SPACE_DIM;
-            data.put("gravity", inSpace ? 0.0 : -9.81);
+            Vector3d gravity = DimensionPhysicsData.getGravity(sputnik.getLevel())
+                    .mul(1 - GlobalSpacePhysicsHandler.calculateGravityFactor(sputnik.getLevel(), sputnik.getY()));
+            data.put("gravityX", gravity.x());
+            data.put("gravityY", gravity.y());
+            data.put("gravityZ", gravity.z());
         }
 
         return data;

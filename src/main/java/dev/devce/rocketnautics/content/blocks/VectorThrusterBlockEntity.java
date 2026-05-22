@@ -144,7 +144,7 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
         if (length < 0.001)
             return;
 
-        double currentThrust = getCurrentPower() * 10.0;
+        double currentThrust = getCurrentPower() * 50.0;
         Vector3d thrustVector = new Vector3d(vx / length, vy / length, vz / length).mul(currentThrust);
 
         Vector3d blockCenter = new Vector3d(worldPosition.getX() + 0.5, worldPosition.getY() + 0.5,
@@ -183,7 +183,7 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
             setActive(value > 0);
             var behavior = getThrustPower();
             if (behavior != null) {
-                float maxN = behavior.getValue() * 10.0f;
+                float maxN = behavior.getValue() * 50.0f;
                 setThrottle(maxN > 0 ? (float)(value / maxN) : 0);
             } else {
                 setThrottle((float) value);

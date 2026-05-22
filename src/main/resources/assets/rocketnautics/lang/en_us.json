@@ -109,5 +109,7 @@
   "item.rocketnautics.titanium_nozzle.summary": "Precision-engineered nozzle for liquid engines. Directs exhaust to provide thrust.",
   
   "key.rocketnautics.toggle_jetpack": "Toggle Jetpack Mode",
-  "key.categories.rocketnautics": "Cosmonautics"
+  "key.categories.rocketnautics": "Cosmonautics",
+  "subtitles.rocketnautics.sonic_boom": "Sonic Boom!",
+  "subtitles.rocketnautics.high_wind": "Rushing Wind"
 }
