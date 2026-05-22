@@ -1,19 +1,14 @@
 package dev.devce.rocketnautics.client;
 
-import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.RocketNauticsClient;
 import dev.devce.rocketnautics.client.render.JetpackLayer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 
 import net.minecraft.client.resources.PlayerSkin;
 
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
-
-import net.neoforged.fml.common.EventBusSubscriber.Bus;
 
 /**
  * Event subscriber for mod-bus client-side events.
@@ -23,6 +18,7 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(RocketNauticsClient.JETPACK_TOGGLE);
+        event.register(RocketNauticsClient.DAMPENERS_TOGGLE);
     }
 
     /**

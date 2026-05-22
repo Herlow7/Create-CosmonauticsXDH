@@ -63,6 +63,10 @@ public class RocketTags {
             ResourceLocation id = ResourceLocation.fromNamespaceAndPath(namespace.id, pathOverride == null ? name().toLowerCase(Locale.ROOT) : pathOverride);
             tag = net.minecraft.tags.ItemTags.create(id);
         }
+
+        public TagKey<Item> tag() {
+            return tag;
+        }
     }
 
     public enum MetalTags {

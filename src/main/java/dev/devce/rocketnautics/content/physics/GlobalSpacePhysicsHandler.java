@@ -1,6 +1,8 @@
 package dev.devce.rocketnautics.content.physics;
 
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.content.items.JetpackItem;
+import dev.devce.rocketnautics.content.items.LegThrustersItem;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.network.ReentryHeatPayload;
 import dev.devce.rocketnautics.registry.RocketParticles;
@@ -14,15 +16,19 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectUtil;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingBreatheEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Quaterniond;
@@ -387,55 +393,72 @@ public class GlobalSpacePhysicsHandler {
         Entity entity = event.getEntity();
         if (entity instanceof LivingEntity living) {
             // applyFallingHeatDamage(living);
-            applySpaceSuffocation(living);
+//            applySpaceSuffocation(living);
         }
     }
 
-
-
-    /**
-     * Applies suffocation damage to entities in space or at high altitudes 
-     * if they lack proper life support equipment (helmets/tanks).
-     */
-    private static void applySpaceSuffocation(LivingEntity entity) {
-        if (entity.level().isClientSide) return;
-        // Suffocation starts above 1000m or in the space dimension
-        if (entity.getY() > 1000 || entity.level().dimension().location().getPath().equals("space")) {
-            if (entity instanceof net.minecraft.world.entity.player.Player player && (player.isCreative() || player.isSpectator())) return;
-            
-            net.minecraft.world.item.ItemStack headItem = entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
-            net.minecraft.world.item.ItemStack chestItem = entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
-            
-            boolean hasProtection = false;
-            
-            // Check for items tagged as space helmets
-            if (headItem.is(net.minecraft.tags.ItemTags.create(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("c", "space_helmets")))) {
-                hasProtection = true;
-            }
-            
-            // Compatibility with Create diving gear: Helmet + Backtank/Jetpack
-            ResourceLocation headId = BuiltInRegistries.ITEM.getKey(headItem.getItem());
-            if (headId.getNamespace().equals("create") && headId.getPath().contains("diving_helmet")) {
-                ResourceLocation chestId = BuiltInRegistries.ITEM.getKey(chestItem.getItem());
-                if ((chestId.getNamespace().equals("create") && chestId.getPath().contains("backtank")) || 
-                    chestId.getPath().contains("jetpack")) {
-                    hasProtection = true;
-                }
-            }
-
-            if (!hasProtection) {
-                int air = entity.getAirSupply();
-                
-                // Rapidly deplete air supply
-                entity.setAirSupply(air - 5); 
-                
-                if (entity.getAirSupply() <= -20) {
-                    entity.setAirSupply(0);
-                    entity.hurt(entity.level().damageSources().drown(), 2.0f);
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onLivingBreathe(LivingBreatheEvent event) {
+        if (event.canBreathe()) {
+            if (!canBreathe(event.getEntity())) {
+                if ((!(event.getEntity() instanceof Player player) || !player.getAbilities().invulnerable)) {
+                    event.setCanBreathe(false);
                 }
             }
         }
     }
+
+    public static boolean canBreathe(LivingEntity entity) {
+        return calculateGravityFactor(entity.level(), entity.getY()) < 0.5;
+    }
+
+    public static boolean shouldDisplayTimer(Player player) {
+        return !canBreathe(player) || JetpackItem.isActive(player) || LegThrustersItem.legThrustersActive(player);
+    }
+
+//    /**
+//     * Applies suffocation damage to entities in space or at high altitudes
+//     * if they lack proper life support equipment (helmets/tanks).
+//     */
+//    private static void applySpaceSuffocation(LivingEntity entity) {
+//        if (entity.level().isClientSide) return;
+//        // Suffocation starts above 1000m or in the space dimension
+//        if (entity.getY() > 1000 || entity.level().dimension().location().getPath().equals("space")) {
+//            if (entity instanceof net.minecraft.world.entity.player.Player player && (player.isCreative() || player.isSpectator())) return;
+//
+//            net.minecraft.world.item.ItemStack headItem = entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD);
+//            net.minecraft.world.item.ItemStack chestItem = entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+//
+//            boolean hasProtection = false;
+//
+//            // Check for items tagged as space helmets
+//            if (headItem.is(net.minecraft.tags.ItemTags.create(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("c", "space_helmets")))) {
+//                hasProtection = true;
+//            }
+//
+//            // Compatibility with Create diving gear: Helmet + Backtank/Jetpack
+//            ResourceLocation headId = BuiltInRegistries.ITEM.getKey(headItem.getItem());
+//            if (headId.getNamespace().equals("create") && headId.getPath().contains("diving_helmet")) {
+//                ResourceLocation chestId = BuiltInRegistries.ITEM.getKey(chestItem.getItem());
+//                if ((chestId.getNamespace().equals("create") && chestId.getPath().contains("backtank")) ||
+//                    chestId.getPath().contains("jetpack")) {
+//                    hasProtection = true;
+//                }
+//            }
+//
+//            if (!hasProtection) {
+//                int air = entity.getAirSupply();
+//
+//                // Rapidly deplete air supply
+//                entity.setAirSupply(air - 5);
+//
+//                if (entity.getAirSupply() <= -20) {
+//                    entity.setAirSupply(0);
+//                    entity.hurt(entity.level().damageSources().drown(), 2.0f);
+//                }
+//            }
+//        }
+//    }
 
     private static void applyFallingHeatDamage(LivingEntity entity) {
         double y = entity.getY();

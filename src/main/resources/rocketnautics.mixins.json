@@ -4,9 +4,12 @@
   "package": "dev.devce.rocketnautics.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "BacktankUtilMixin",
+    "DivingHelmetItemMixin",
     "EntityMixin",
     "LivingEntityAccessor",
     "LivingEntityMixin",
+    "RemainingAirOverlayMixin",
     "SubLevelPhysicsSystemMixin",
     "SubLevelWarperMixin"
   ],

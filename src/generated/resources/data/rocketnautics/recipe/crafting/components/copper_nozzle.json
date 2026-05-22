@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "tag": "c:plates/gold"
+    },
+    "B": {
+      "tag": "c:plates/copper"
+    },
+    "C": {
+      "tag": "c:plates/titanium"
+    },
+    "D": {
+      "tag": "c:ingots/copper"
+    }
+  },
+  "pattern": [
+    " A ",
+    "BCB",
+    "D D"
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:copper_nozzle"
+  }
+}

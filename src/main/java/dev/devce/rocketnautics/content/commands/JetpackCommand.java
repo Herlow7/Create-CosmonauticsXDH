@@ -1,7 +1,7 @@
 package dev.devce.rocketnautics.content.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
-import dev.devce.rocketnautics.content.physics.JetpackHandler;
+import dev.devce.rocketnautics.content.items.JetpackItem;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -14,8 +14,8 @@ public final class JetpackCommand {
             .then(Commands.literal("jetpack")
                 .executes(context -> {
                     ServerPlayer player = context.getSource().getPlayerOrException();
-                    JetpackHandler.toggle(player);
-                    boolean active = JetpackHandler.isActive(player);
+                    JetpackItem.toggle(player);
+                    boolean active = JetpackItem.isActive(player);
                     context.getSource().sendSuccess(() -> Component.literal("Jetpack " + (active ? "enabled" : "disabled")), true);
                     return 1;
                 })

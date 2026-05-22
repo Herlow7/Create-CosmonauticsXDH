@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "rocketnautics:crafting/equipment/jetpack"
+        "recipe": "rocketnautics:crafting/equipment/copper_leg_thrusters"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -26,7 +26,7 @@
   ],
   "rewards": {
     "recipes": [
-      "rocketnautics:crafting/equipment/jetpack"
+      "rocketnautics:crafting/equipment/copper_leg_thrusters"
     ]
   }
 }

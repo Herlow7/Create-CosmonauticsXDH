@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "create:andesite_alloy"
+    },
+    "C": {
+      "tag": "c:ingots/copper"
+    },
+    "P": {
+      "item": "rocketnautics:copper_nozzle"
+    },
+    "W": {
+      "item": "minecraft:dried_kelp"
+    }
+  },
+  "pattern": [
+    "WAW",
+    "C C",
+    "P P"
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:copper_leg_thrusters"
+  }
+}

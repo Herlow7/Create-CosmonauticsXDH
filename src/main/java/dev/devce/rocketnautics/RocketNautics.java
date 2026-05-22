@@ -1,6 +1,10 @@
 package dev.devce.rocketnautics;
 
 import com.mojang.logging.LogUtils;
+import com.simibubi.create.foundation.item.ItemDescription;
+import com.simibubi.create.foundation.item.KineticStats;
+import com.simibubi.create.foundation.item.TooltipHelper;
+import com.simibubi.create.foundation.item.TooltipModifier;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 import dev.devce.rocketnautics.compat.computercraft.ComputerCraftCompat;
 import dev.devce.rocketnautics.content.blocks.LinkedSignalHandler;
@@ -12,10 +16,13 @@ import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.data.RocketDatagen;
 import dev.devce.rocketnautics.network.NetworkHandler;
 import dev.devce.rocketnautics.registry.*;
+import dev.simulated_team.simulated.util.SimColors;
+import net.createmod.catnip.lang.FontHelper;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -63,6 +70,7 @@ public class RocketNautics {
 
         // Register registries
         getRegistrate().registerEventListeners(modEventBus);
+        setTooltips();
 
         RocketItems.init();
         RocketBlocks.init();
@@ -73,6 +81,7 @@ public class RocketNautics {
         InternalNodes.register();
         dev.devce.rocketnautics.registry.RocketNodes.register();
 
+        RocketDataComponents.register(modEventBus);
 
         // Register mod-bus event subscribers manually to avoid deprecated bus() parameter
         modEventBus.register(NetworkHandler.class);
@@ -100,6 +109,19 @@ public class RocketNautics {
 
     public static RocketRegistrate getRegistrate() {
         return REGISTRATE.get();
+    }
+
+    public static void setTooltips() {
+        getRegistrate().setTooltipModifierFactory(item -> {
+            final Rarity rarity = item.getDefaultInstance().getRarity();
+            FontHelper.Palette color = FontHelper.Palette.STANDARD_CREATE;
+            if (rarity == Rarity.EPIC)
+                color = new FontHelper.Palette(TooltipHelper.styleFromColor(SimColors.EPIC_OURPLE), TooltipHelper.styleFromColor(rarity.color()));
+
+            return new ItemDescription
+                    .Modifier(item, color)
+                    .andThen(TooltipModifier.mapNull(KineticStats.create(item)));
+        });
     }
 
     /**

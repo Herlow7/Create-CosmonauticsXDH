@@ -5,6 +5,8 @@ import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.client.DeepSpaceHandler;
 import dev.devce.rocketnautics.client.PlanetColors;
 import dev.devce.rocketnautics.client.SkyHandler;
+import dev.devce.rocketnautics.content.items.JetpackItem;
+import dev.devce.rocketnautics.content.items.LegThrustersItem;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
@@ -33,7 +35,13 @@ public class NetworkHandler {
         registrar.playToServer(
             JetpackTogglePayload.TYPE,
             JetpackTogglePayload.CODEC,
-            (payload, context) -> context.enqueueWork(() -> dev.devce.rocketnautics.content.physics.JetpackHandler.toggle((ServerPlayer) context.player()))
+            (payload, context) -> context.enqueueWork(() -> JetpackItem.toggle((ServerPlayer) context.player()))
+        );
+
+        registrar.playToServer(
+            DampenersTogglePayload.TYPE,
+            DampenersTogglePayload.CODEC,
+            (payload, context) -> context.enqueueWork(() -> LegThrustersItem.toggle((ServerPlayer) context.player()))
         );
 
         registrar.playToServer(
@@ -64,12 +72,6 @@ public class NetworkHandler {
             DebugLogPayload.TYPE,
             DebugLogPayload.CODEC,
             (payload, context) -> context.enqueueWork(() -> dev.devce.rocketnautics.RocketNauticsClient.addLog(payload.message(), payload.color()))
-        );
-
-        registrar.playToClient(
-            JetpackPayload.TYPE,
-            JetpackPayload.CODEC,
-            (payload, context) -> context.enqueueWork(() -> handleJetpackState(payload.entityId(), payload.active()))
         );
 
         registrar.playToServer(
@@ -134,11 +136,6 @@ public class NetworkHandler {
         } else {
             // dev.devce.rocketnautics.RocketNautics.LOGGER.warn("Failed to find Sputnik at {} for sync from player {}", pos, player.getName().getString());
         }
-    }
-
-    @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
-    private static void handleJetpackState(int entityId, boolean active) {
-        dev.devce.rocketnautics.content.physics.JetpackHandler.setEntityActive(entityId, active);
     }
 
     @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)

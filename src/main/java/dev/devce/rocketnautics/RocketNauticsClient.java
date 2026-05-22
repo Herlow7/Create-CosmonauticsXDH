@@ -1,5 +1,6 @@
 package dev.devce.rocketnautics;
 
+import com.mojang.blaze3d.platform.InputConstants.Type;
 import net.minecraft.client.DeltaTracker;
 import dev.devce.rocketnautics.client.render.VectorThrusterRenderer;
 import dev.devce.rocketnautics.content.blocks.RocketThrusterRenderer;
@@ -15,6 +16,7 @@ import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.Pose3d;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.DimensionSpecialEffects;
@@ -26,6 +28,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.*;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,10 +52,18 @@ public class RocketNauticsClient {
     public static int lastAppliedRenderDistance = -1;
 
     /** Key mapping to toggle the jetpack on/off. */
-    public static final net.minecraft.client.KeyMapping JETPACK_TOGGLE = new net.minecraft.client.KeyMapping(
+    public static final KeyMapping JETPACK_TOGGLE = new KeyMapping(
             "key.rocketnautics.toggle_jetpack",
-            com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM,
-            org.lwjgl.glfw.GLFW.GLFW_KEY_G,
+            Type.KEYSYM,
+            GLFW.GLFW_KEY_G,
+            "key.categories.rocketnautics"
+    );
+
+    /** Key mapping to toggle inertial dampeners on/off. */
+    public static final KeyMapping DAMPENERS_TOGGLE = new KeyMapping(
+            "key.rocketnautics.toggle_dampeners",
+            Type.KEYSYM,
+            GLFW.GLFW_KEY_Z,
             "key.categories.rocketnautics"
     );
 

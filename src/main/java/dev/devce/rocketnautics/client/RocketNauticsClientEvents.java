@@ -1,20 +1,17 @@
 package dev.devce.rocketnautics.client;
 
-import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.RocketNauticsClient;
-import net.neoforged.fml.common.EventBusSubscriber.Bus;
+import dev.devce.rocketnautics.content.items.JetpackItem;
+import dev.devce.rocketnautics.content.items.LegThrustersItem;
+import dev.devce.rocketnautics.network.DampenersTogglePayload;
+import dev.devce.rocketnautics.network.JetpackTogglePayload;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ViewportEvent;
-import dev.devce.rocketnautics.content.physics.JetpackHandler;
-import net.minecraft.util.Mth;
-import dev.devce.rocketnautics.client.CameraShakeHandler;
-import dev.devce.rocketnautics.content.physics.SpaceTransitionHandler;
-import dev.devce.rocketnautics.RocketConfig;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Event subscriber for game-bus client-side events.
@@ -95,20 +92,17 @@ public class RocketNauticsClientEvents {
 
         
         while (RocketNauticsClient.JETPACK_TOGGLE.consumeClick()) {
-            
-            if (mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).getItem() instanceof dev.devce.rocketnautics.content.items.JetpackItem) {
-                net.neoforged.neoforge.network.PacketDistributor.sendToServer(new dev.devce.rocketnautics.network.JetpackTogglePayload());
+            if (mc.player.getItemBySlot(EquipmentSlot.CHEST).getItem() instanceof JetpackItem) {
+                PacketDistributor.sendToServer(new JetpackTogglePayload());
             }
         }
 
-        
-        if (JetpackHandler.isActive(mc.player)) {
-            if (mc.player.level().getGameTime() % 2 == 0) {
-                
+        while (RocketNauticsClient.DAMPENERS_TOGGLE.consumeClick()) {
+            if (mc.player.getItemBySlot(EquipmentSlot.LEGS).getItem() instanceof LegThrustersItem) {
+                PacketDistributor.sendToServer(new DampenersTogglePayload());
             }
         }
 
-        
         CameraShakeHandler.tick();
     }
 

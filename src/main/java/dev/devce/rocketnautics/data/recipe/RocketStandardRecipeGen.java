@@ -1,6 +1,7 @@
 package dev.devce.rocketnautics.data.recipe;
 
 import com.google.common.collect.ImmutableList;
+import com.simibubi.create.AllBlocks;
 import com.simibubi.create.AllItems;
 import com.simibubi.create.AllTags;
 import com.simibubi.create.api.data.recipe.BaseRecipeProvider;
@@ -9,6 +10,7 @@ import com.tterrag.registrate.util.entry.ItemProviderEntry;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.registry.RocketBlocks;
 import dev.devce.rocketnautics.registry.RocketItems;
+import dev.devce.rocketnautics.registry.RocketTags;
 import net.createmod.catnip.registry.RegisteredObjectsHelper;
 import net.minecraft.advancements.critereon.ItemPredicate;
 import net.minecraft.core.HolderLookup;
@@ -71,14 +73,36 @@ public final class RocketStandardRecipeGen extends BaseRecipeProvider {
 
     private Marker EQUIPMENT = enterFolder("equipment");
 
-    GeneratedRecipe JETPACK = create(RocketItems.JETPACK).unlockedBy(RocketItems.TITANIUM_NOZZLE).viaShaped(b -> b
-            .pattern(" P ")
-            .pattern("TBT")
-            .pattern("N N")
-            .define('P', AllItems.PRECISION_MECHANISM)
-            .define('T', MetalTags.TITANIUM.plates)
-            .define('B', AllItems.NETHERITE_BACKTANK)
-            .define('N', RocketItems.TITANIUM_NOZZLE));
+    GeneratedRecipe JETPACK = create(RocketItems.JETPACK)
+            .unlockedByTag(ItemTags.NOZZLES::tag)
+            .viaShaped(b -> b
+                    .pattern(" P ")
+                    .pattern("TBT")
+                    .pattern("N N")
+                    .define('P', AllItems.PRECISION_MECHANISM)
+                    .define('T', MetalTags.TITANIUM.plates)
+                    .define('B', AllItems.NETHERITE_BACKTANK)
+                    .define('N', RocketItems.TITANIUM_NOZZLE));
+
+    GeneratedRecipe COPPER_LEG_THRUSTERS = create(RocketItems.COPPER_LEG_THRUSTERS)
+            .unlockedByTag(ItemTags.NOZZLES::tag)
+            .viaShaped(b -> b
+                    .pattern("WAW")
+                    .pattern("C C")
+                    .pattern("P P")
+                    .define('C', Tags.Items.INGOTS_COPPER)
+                    .define('P', RocketItems.COPPER_NOZZLE)
+                    .define('W', Items.DRIED_KELP)
+                    .define('A', AllItems.ANDESITE_ALLOY));
+
+    GeneratedRecipe COPPER_ANCHOR_BOOTS = create(RocketItems.COPPER_ANCHOR_BOOTS)
+            .unlockedByTag(() -> Tags.Items.INGOTS_COPPER)
+            .viaShaped(b -> b
+                    .pattern("C C")
+                    .pattern("C C")
+                    .pattern("P P")
+                    .define('C', Tags.Items.INGOTS_COPPER)
+                    .define('P', MetalTags.TITANIUM_ALLOY.plates));
 
     private Marker COMPONENTS = enterFolder("components");
 
@@ -90,6 +114,15 @@ public final class RocketStandardRecipeGen extends BaseRecipeProvider {
             .define('B', MetalTags.TITANIUM_ALLOY.plates)
             .define('C', MetalTags.TITANIUM.plates)
             .define('D', MetalTags.TITANIUM_ALLOY.ingots));
+
+    GeneratedRecipe COPPER_NOZZLE = create(RocketItems.COPPER_NOZZLE).unlockedByTag(MetalTags.TITANIUM::ingots).viaShaped(b -> b
+            .pattern(" A ")
+            .pattern("BCB")
+            .pattern("D D")
+            .define('A', CommonMetal.GOLD.plates)
+            .define('B', CommonMetal.COPPER.plates)
+            .define('C', MetalTags.TITANIUM.plates)
+            .define('D', CommonMetal.COPPER.ingots));
 
     private Marker MECHANISMS = enterFolder("mechanisms");
 

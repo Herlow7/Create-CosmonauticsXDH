@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.Set;
 import java.util.UUID;
 
-@Mixin(SubLevelWarper.class)
+@Mixin(value = SubLevelWarper.class, remap = false)
 public class SubLevelWarperMixin {
 
     @Inject(method = "WarpSubLevels", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/phys/AABB;inflate(D)Lnet/minecraft/world/phys/AABB;"))

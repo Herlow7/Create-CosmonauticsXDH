@@ -1,16 +1,19 @@
 package dev.devce.rocketnautics.registry;
 
 import com.simibubi.create.AllTags;
+import com.simibubi.create.content.equipment.armor.AllArmorMaterials;
+import com.simibubi.create.content.equipment.armor.DivingBootsItem;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import dev.devce.rocketnautics.RocketNautics;
-import dev.devce.rocketnautics.content.items.CreditsBookItem;
-import dev.devce.rocketnautics.content.items.JetpackItem;
-import dev.devce.rocketnautics.content.items.RocketItem;
+import dev.devce.rocketnautics.content.items.*;
 import dev.simulated_team.simulated.registrate.SimulatedRegistrate;
+import dev.simulated_team.simulated.service.SimTabService;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.ArmorItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
 import net.neoforged.neoforge.common.Tags;
@@ -32,6 +35,18 @@ public class RocketItems {
 
     public static final ItemEntry<JetpackItem> JETPACK = REGISTRATE.item("jetpack", JetpackItem::new)
             .properties(p -> p.stacksTo(1).fireResistant())
+            .tag(ItemTags.CHEST_ARMOR)
+            .tag(AllTags.AllItemTags.PRESSURIZED_AIR_SOURCES.tag)
+            .register();
+
+    public static final ItemEntry<LegThrustersItem> COPPER_LEG_THRUSTERS = REGISTRATE.item("copper_leg_thrusters", p -> new LegThrustersItem(AllArmorMaterials.COPPER, p, RocketNautics.path("copper_diving")))
+            .properties(p -> p.durability(ArmorItem.Type.LEGGINGS.getDurability(7)))
+            .tag(ItemTags.LEG_ARMOR)
+            .register();
+
+    public static final ItemEntry<AnchorBootsItem> COPPER_ANCHOR_BOOTS = REGISTRATE.item("copper_anchor_boots", p -> new AnchorBootsItem(AllArmorMaterials.COPPER, p, RocketNautics.path("copper_diving")))
+            .properties(p -> p.durability(ArmorItem.Type.BOOTS.getDurability(7)))
+            .tag(ItemTags.FOOT_ARMOR)
             .register();
 
     static { REGISTRATE.setCreativeTab(RocketTabs.RESOURCE_TAB); }
@@ -53,6 +68,8 @@ public class RocketItems {
     public static final ItemEntry<RocketItem> TITANIUM_ALLOY_SHEET = taggedIngredientFireResistant("titanium_alloy_sheet", RocketTags.MetalTags.TITANIUM_ALLOY.plates, RocketTags.ItemTags.PLATES.tag);
 
     public static final ItemEntry<RocketItem> TITANIUM_NOZZLE = taggedIngredientFireResistant("titanium_nozzle", RocketTags.ItemTags.NOZZLES.tag);
+
+    public static final ItemEntry<RocketItem> COPPER_NOZZLE = taggedIngredient("copper_nozzle", RocketTags.ItemTags.NOZZLES.tag);
 
     static { REGISTRATE.setCreativeTab(null); }
 
