@@ -1,6 +1,8 @@
 package dev.devce.rocketnautics.client;
 
+import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNauticsClient;
+import dev.devce.rocketnautics.content.physics.SpaceTransitionHandler;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.items.LegThrustersItem;
 import dev.devce.rocketnautics.network.DampenersTogglePayload;
