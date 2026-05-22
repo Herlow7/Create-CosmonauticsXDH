@@ -1,6 +1,8 @@
 package dev.devce.rocketnautics;
 
 import com.mojang.blaze3d.platform.InputConstants.Type;
+import com.mojang.blaze3d.platform.InputConstants.Type;
+import dev.devce.rocketnautics.data.worldgen.DimensionTypes;
 import net.minecraft.client.DeltaTracker;
 import dev.devce.rocketnautics.client.render.VectorThrusterRenderer;
 import dev.devce.rocketnautics.content.blocks.RocketThrusterRenderer;
@@ -232,20 +234,20 @@ public class RocketNauticsClient {
 
     @SubscribeEvent
     public static void registerDimensionEffects(RegisterDimensionSpecialEffectsEvent event) {
-        event.register(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "space"),
-            new DimensionSpecialEffects(Float.NaN, false, DimensionSpecialEffects.SkyType.NORMAL, false, false) {
-                @Override
-                public Vec3 getBrightnessDependentFogColor(Vec3 fogColor, float brightness) {
-                    return fogColor;
-                }
-
-                @Override
-                public boolean isFoggyAt(int x, int y) {
-                    return false;
-                }
-            });
-        event.register(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "deep_space"),
+        event.register(DimensionTypes.DEEP_SPACE_EFFECTS,
                 new DimensionSpecialEffects(Float.NaN, false, DimensionSpecialEffects.SkyType.NONE, false, false) {
+                    @Override
+                    public Vec3 getBrightnessDependentFogColor(Vec3 fogColor, float brightness) {
+                        return Vec3.ZERO;
+                    }
+
+                    @Override
+                    public boolean isFoggyAt(int x, int y) {
+                        return false;
+                    }
+                });
+        event.register(DimensionTypes.MOON_EFFECTS,
+                new DimensionSpecialEffects(Float.NaN, true, DimensionSpecialEffects.SkyType.NONE, false, false) {
                     @Override
                     public Vec3 getBrightnessDependentFogColor(Vec3 fogColor, float brightness) {
                         return Vec3.ZERO;
