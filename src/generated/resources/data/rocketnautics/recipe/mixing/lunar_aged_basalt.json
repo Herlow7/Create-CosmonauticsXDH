@@ -1,0 +1,21 @@
+{
+  "type": "create:mixing",
+  "heat_requirement": "heated",
+  "ingredients": [
+    {
+      "item": "rocketnautics:lunar_shattered_regolith"
+    },
+    {
+      "item": "minecraft:basalt"
+    }
+  ],
+  "results": [
+    {
+      "count": 2,
+      "id": "rocketnautics:lunar_aged_basalt"
+    },
+    {
+      "id": "create:cinder_flour"
+    }
+  ]
+}

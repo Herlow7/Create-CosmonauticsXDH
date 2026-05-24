@@ -2,6 +2,8 @@ package dev.devce.rocketnautics.registry;
 
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.builders.BlockBuilder;
+import com.tterrag.registrate.builders.ItemBuilder;
+import com.tterrag.registrate.util.DataIngredient;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullFunction;
 import dev.devce.rocketnautics.RocketNautics;
@@ -11,14 +13,15 @@ import dev.simulated_team.simulated.registrate.SimulatedRegistrate;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.ColorRGBA;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
@@ -27,6 +30,7 @@ import net.neoforged.neoforge.common.Tags;
 import org.jspecify.annotations.NonNull;
 
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
 import static com.simibubi.create.foundation.data.TagGen.tagBlockAndItem;
@@ -147,6 +151,133 @@ public class RocketBlocks {
             .build()
             .register();
 
+    // MOON START
+
+    public static final BlockEntry<RotatedPillarBlock> LUNAR_REGOLITH = REGISTRATE.block("lunar_regolith", RotatedPillarBlock::new)
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .recipe((ctx, prov) -> prov.smeltingAndBlasting(DataIngredient.items((ItemLike) RocketBlocks.LUNAR_SHATTERED_REGOLITH), RecipeCategory.BUILDING_BLOCKS, ctx::getEntry, 1f))
+            .blockstate((ctx, prov) -> prov.axisBlock(ctx.getEntry()))
+            .item().build()
+            .register();
+
+    // TODO look into Create's block palette system
+    public static final BlockEntry<StairBlock> LUNAR_REGOLITH_STAIRS = REGISTRATE.block("lunar_regolith_stairs", p -> new StairBlock(LUNAR_REGOLITH.getDefaultState(), p))
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .transform(stairs(LUNAR_REGOLITH, "_end", "_side"))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<SlabBlock> LUNAR_REGOLITH_SLAB = REGISTRATE.block("lunar_regolith_slab", SlabBlock::new)
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .transform(slab(LUNAR_REGOLITH, "_end", "_side"))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_SHATTERED_REGOLITH = REGISTRATE.block("lunar_shattered_regolith", Block::new)
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .item().build()
+            .register();
+
+    public static final BlockEntry<StairBlock> LUNAR_SHATTERED_REGOLITH_STAIRS = REGISTRATE.block("lunar_shattered_regolith_stairs", p -> new StairBlock(LUNAR_SHATTERED_REGOLITH.getDefaultState(), p))
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .transform(stairs(LUNAR_SHATTERED_REGOLITH))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<SlabBlock> LUNAR_SHATTERED_REGOLITH_SLAB = REGISTRATE.block("lunar_shattered_regolith_slab", SlabBlock::new)
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .transform(slab(LUNAR_SHATTERED_REGOLITH))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<ColoredFallingBlock> LUNAR_LOOSE_REGOLITH = REGISTRATE.block("lunar_loose_regolith", p -> new ColoredFallingBlock(new ColorRGBA(-8356741), p))
+            .initialProperties(() -> Blocks.GRAVEL)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .item().build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_REGOLITH_BRICK = REGISTRATE.block("lunar_regolith_brick", Block::new)
+            .initialProperties(() -> Blocks.STONE)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .recipe((ctx, prov) -> prov.stonecutting(DataIngredient.items((ItemLike) LUNAR_REGOLITH), RecipeCategory.BUILDING_BLOCKS, ctx::getEntry))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<StairBlock> LUNAR_REGOLITH_BRICK_STAIRS = REGISTRATE.block("lunar_regolith_brick_stairs", p -> new StairBlock(LUNAR_SHATTERED_REGOLITH.getDefaultState(), p))
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .transform(stairs(LUNAR_REGOLITH_BRICK))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<SlabBlock> LUNAR_REGOLITH_BRICK_SLAB = REGISTRATE.block("lunar_regolith_brick_slab", SlabBlock::new)
+            .initialProperties(() -> Blocks.NETHERRACK)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .transform(pickaxeOnly())
+            .transform(slab(LUNAR_REGOLITH_BRICK))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<RotatedPillarBlock> LUNAR_AGED_BASALT = REGISTRATE.block("lunar_aged_basalt", RotatedPillarBlock::new)
+            .initialProperties(() -> Blocks.BASALT)
+            .transform(pickaxeOnly())
+            .blockstate((ctx, prov) -> prov.axisBlock(ctx.getEntry()))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_MOSS_STIFF = REGISTRATE.block("lunar_moss_stiff", Block::new)
+            .initialProperties(() -> Blocks.DEAD_BRAIN_CORAL)
+            .transform(pickaxeOnly())
+            .transform(crossModelAndFlatItem()).build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_MOSS_SHORT = REGISTRATE.block("lunar_moss_short", Block::new)
+            .initialProperties(() -> Blocks.DEAD_BRAIN_CORAL)
+            .transform(pickaxeOnly())
+            .transform(crossModelAndFlatItem()).build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_MOSS_SCRAGGLY = REGISTRATE.block("lunar_moss_scraggly", Block::new)
+            .initialProperties(() -> Blocks.DEAD_BRAIN_CORAL)
+            .transform(pickaxeOnly())
+            .transform(crossModelAndFlatItem()).build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_ROCK_TALL = REGISTRATE.block("lunar_rock_tall", Block::new)
+            .initialProperties(() -> Blocks.DEAD_BRAIN_CORAL)
+            .transform(pickaxeOnly())
+            .transform(crossModelAndFlatItem()).build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_ROCK_SMOOTH = REGISTRATE.block("lunar_rock_smooth", Block::new)
+            .initialProperties(() -> Blocks.DEAD_BRAIN_CORAL)
+            .transform(pickaxeOnly())
+            .transform(crossModelAndFlatItem()).build()
+            .register();
+
+    public static final BlockEntry<Block> LUNAR_ROCK_SPIKY = REGISTRATE.block("lunar_rock_spiky", Block::new)
+            .initialProperties(() -> Blocks.DEAD_BRAIN_CORAL)
+            .transform(pickaxeOnly())
+            .transform(crossModelAndFlatItem()).build()
+            .register();
+
+    // MOON END
+
     static { REGISTRATE.setCreativeTab(RocketTabs.RESOURCE_TAB); }
 
     public static final BlockEntry<Block> RAW_TITANIUM_BLOCK = REGISTRATE.block("raw_titanium_block", Block::new)
@@ -198,6 +329,31 @@ public class RocketBlocks {
 
     private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> existingSimpleModel(String name) {
         return b -> b.blockstate((ctx, prov) -> prov.simpleBlock(ctx.getEntry(), prov.models().getExistingFile(RocketNautics.path("block/" + name))));
+    }
+
+    private static <T extends Block> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, ItemBuilder<BlockItem, BlockBuilder<T, CreateRegistrate>>> crossModelAndFlatItem() {
+        return b -> b.blockstate((ctx, prov) -> prov.simpleBlock(ctx.getEntry(), prov.models().cross(ctx.getName(), prov.blockTexture(ctx.getEntry())).renderType("cutout")))
+                .item().model((ctx, prov) -> prov.generated(ctx::getEntry, RocketNautics.path("block/" + ctx.getName())));
+    }
+
+    private static <T extends StairBlock> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> stairs(BlockEntry<? extends Block> parent) {
+        return stairs(parent, "", "");
+    }
+
+    private static <T extends StairBlock> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> stairs(BlockEntry<? extends Block> parent, String topSuffix, String sideSuffix) {
+        return b -> b
+                .recipe((ctx, prov) -> prov.stairs(DataIngredient.items((ItemLike) parent), RecipeCategory.BUILDING_BLOCKS, ctx::getEntry, ctx.getName(), true))
+                .blockstate((ctx, prov) -> prov.stairsBlock(ctx.getEntry(), RocketNautics.path("block/" + parent.getKey().location().getPath() + sideSuffix), RocketNautics.path("block/" + parent.getKey().location().getPath() + topSuffix), RocketNautics.path("block/" + parent.getKey().location().getPath() + topSuffix)));
+    }
+
+    private static <T extends SlabBlock> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> slab(BlockEntry<? extends Block> parent) {
+        return slab(parent, "", "");
+    }
+
+    private static <T extends SlabBlock> @NonNull NonNullFunction<BlockBuilder<T, CreateRegistrate>, BlockBuilder<T, CreateRegistrate>> slab(BlockEntry<? extends Block> parent, String topSuffix, String sideSuffix) {
+        return b -> b
+                .recipe((ctx, prov) -> prov.stairs(DataIngredient.items((ItemLike) parent), RecipeCategory.BUILDING_BLOCKS, ctx::getEntry, ctx.getName(), true))
+                .blockstate((ctx, prov) -> prov.slabBlock(ctx.getEntry(), RocketNautics.path("block/" + parent.getKey().location().getPath()), RocketNautics.path("block/" + parent.getKey().location().getPath() + sideSuffix), RocketNautics.path("block/" + parent.getKey().location().getPath() + topSuffix), RocketNautics.path("block/" + parent.getKey().location().getPath() + topSuffix)));
     }
 
 }

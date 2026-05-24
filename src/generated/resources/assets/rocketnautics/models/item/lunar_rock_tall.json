@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "rocketnautics:block/lunar_rock_tall"
+  }
+}

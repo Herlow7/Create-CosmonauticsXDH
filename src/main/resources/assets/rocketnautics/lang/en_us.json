@@ -119,5 +119,23 @@
   "key.categories.rocketnautics": "Cosmonautics",
   "subtitles.rocketnautics.sonic_boom": "Sonic Boom!",
   "subtitles.rocketnautics.high_wind": "Rushing Wind",
-  "rocketnautics.display_source.sputnik": "Sputnik Node Display"
+  "rocketnautics.display_source.sputnik": "Sputnik Node Display",
+
+  "block.rocketnautics.lunar_aged_basalt": "Aged Basalt",
+  "block.rocketnautics.lunar_loose_regolith": "Loose Lunar Regolith",
+  "block.rocketnautics.lunar_regolith": "Lunar Regolith",
+  "block.rocketnautics.lunar_regolith_stairs": "Lunar Regolith Stairs",
+  "block.rocketnautics.lunar_regolith_slab": "Lunar Regolith Slab",
+  "block.rocketnautics.lunar_shattered_regolith": "Shattered Lunar Regolith",
+  "block.rocketnautics.lunar_shattered_regolith_stairs": "Shattered Lunar Regolith Stairs",
+  "block.rocketnautics.lunar_shattered_regolith_slab": "Shattered Lunar Regolith Slab",
+  "block.rocketnautics.lunar_regolith_brick": "Lunar Regolith Brick",
+  "block.rocketnautics.lunar_regolith_brick_stairs": "Lunar Regolith Brick Stairs",
+  "block.rocketnautics.lunar_regolith_brick_slab": "Lunar Regolith Brick Slab",
+  "block.rocketnautics.lunar_moss_scraggly": "Scraggly Lunar Moss",
+  "block.rocketnautics.lunar_moss_short": "Short Lunar Moss",
+  "block.rocketnautics.lunar_moss_stiff": "Stiff Lunar Moss",
+  "block.rocketnautics.lunar_rock_smooth": "Smooth Lunar Rock",
+  "block.rocketnautics.lunar_rock_spiky": "Spiky Lunar Rock",
+  "block.rocketnautics.lunar_rock_tall": "Tall Lunar Rock"
 }

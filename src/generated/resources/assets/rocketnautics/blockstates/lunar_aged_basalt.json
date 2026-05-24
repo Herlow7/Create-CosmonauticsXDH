@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "rocketnautics:block/lunar_aged_basalt_horizontal",
+      "x": 90,
+      "y": 90
+    },
+    "axis=y": {
+      "model": "rocketnautics:block/lunar_aged_basalt"
+    },
+    "axis=z": {
+      "model": "rocketnautics:block/lunar_aged_basalt_horizontal",
+      "x": 90
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column_horizontal",
+  "textures": {
+    "end": "rocketnautics:block/lunar_regolith_end",
+    "side": "rocketnautics:block/lunar_regolith_side"
+  }
+}

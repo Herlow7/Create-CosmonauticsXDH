@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "rocketnautics:lunar_shattered_regolith"
+  },
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:lunar_shattered_regolith_slab"
+  }
+}

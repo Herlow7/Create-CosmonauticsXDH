@@ -2,6 +2,9 @@ package dev.devce.rocketnautics.data;
 
 import dev.devce.rocketnautics.data.recipe.*;
 import dev.devce.rocketnautics.data.worldgen.*;
+import dev.devce.rocketnautics.data.worldgen.noise.Noise;
+import dev.devce.rocketnautics.data.worldgen.noise.NoiseDensities;
+import dev.devce.rocketnautics.data.worldgen.noise.NoiseGenSettings;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
@@ -21,6 +24,7 @@ public class RocketDatagen {
 
         event.addProvider(new RocketCrushingRecipeGen(output, registries));
         event.addProvider(new RocketMechanicalCraftingRecipeGen(output, registries));
+        event.addProvider(new RocketMillingRecipeGen(output, registries));
         event.addProvider(new RocketMixingRecipeGen(output, registries));
         event.addProvider(new RocketPressingRecipeGen(output, registries));
         event.addProvider(new RocketStandardRecipeGen(output, registries));
@@ -32,6 +36,9 @@ public class RocketDatagen {
         registry.add(NeoForgeRegistries.Keys.BIOME_MODIFIERS, BiomeModifiers::bootstrap);
         registry.add(Registries.PLACED_FEATURE, PlacedFeatures::bootstrap);
         registry.add(Registries.CONFIGURED_FEATURE, ConfiguredFeatures::bootstrap);
+        registry.add(Registries.NOISE_SETTINGS, NoiseGenSettings::bootstrap);
+        registry.add(Registries.NOISE, Noise::bootstrap);
+        registry.add(Registries.DENSITY_FUNCTION, NoiseDensities::bootstrap);
         event.createDatapackRegistryObjects(registry);
     }
 }

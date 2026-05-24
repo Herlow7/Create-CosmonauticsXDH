@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "group": "lunar_shattered_regolith_stairs",
+  "key": {
+    "X": {
+      "item": "rocketnautics:lunar_shattered_regolith"
+    }
+  },
+  "pattern": [
+    "X  ",
+    "XX ",
+    "XXX"
+  ],
+  "result": {
+    "count": 4,
+    "id": "rocketnautics:lunar_shattered_regolith_stairs"
+  }
+}

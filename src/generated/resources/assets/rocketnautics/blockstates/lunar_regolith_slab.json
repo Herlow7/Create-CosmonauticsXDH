@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "rocketnautics:block/lunar_regolith_slab"
+    },
+    "type=double": {
+      "model": "rocketnautics:block/lunar_regolith"
+    },
+    "type=top": {
+      "model": "rocketnautics:block/lunar_regolith_slab_top"
+    }
+  }
+}

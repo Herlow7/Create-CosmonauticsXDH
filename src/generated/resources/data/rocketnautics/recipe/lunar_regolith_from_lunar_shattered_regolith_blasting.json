@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:blasting",
+  "category": "blocks",
+  "cookingtime": 100,
+  "experience": 1.0,
+  "ingredient": {
+    "item": "rocketnautics:lunar_shattered_regolith"
+  },
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:lunar_regolith"
+  }
+}

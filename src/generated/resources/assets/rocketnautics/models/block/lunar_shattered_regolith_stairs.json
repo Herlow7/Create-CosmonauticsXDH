@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/stairs",
+  "textures": {
+    "bottom": "rocketnautics:block/lunar_shattered_regolith",
+    "side": "rocketnautics:block/lunar_shattered_regolith",
+    "top": "rocketnautics:block/lunar_shattered_regolith"
+  }
+}

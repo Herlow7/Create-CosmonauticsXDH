@@ -1,0 +1,14 @@
+{
+  "type": "create:milling",
+  "ingredients": [
+    {
+      "item": "rocketnautics:lunar_shattered_regolith"
+    }
+  ],
+  "processing_time": 250,
+  "results": [
+    {
+      "id": "rocketnautics:lunar_loose_regolith"
+    }
+  ]
+}

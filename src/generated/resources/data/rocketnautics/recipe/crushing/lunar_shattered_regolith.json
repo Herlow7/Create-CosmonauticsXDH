@@ -1,0 +1,26 @@
+{
+  "type": "create:crushing",
+  "ingredients": [
+    {
+      "item": "rocketnautics:lunar_shattered_regolith"
+    }
+  ],
+  "processing_time": 250,
+  "results": [
+    {
+      "id": "rocketnautics:lunar_loose_regolith"
+    },
+    {
+      "chance": 0.1,
+      "id": "rocketnautics:lunar_rock_smooth"
+    },
+    {
+      "chance": 0.1,
+      "id": "rocketnautics:lunar_rock_spiky"
+    },
+    {
+      "chance": 0.1,
+      "id": "rocketnautics:lunar_rock_tall"
+    }
+  ]
+}

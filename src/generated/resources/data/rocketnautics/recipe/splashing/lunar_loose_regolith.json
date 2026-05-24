@@ -1,0 +1,25 @@
+{
+  "type": "create:splashing",
+  "ingredients": [
+    {
+      "item": "rocketnautics:lunar_loose_regolith"
+    }
+  ],
+  "results": [
+    {
+      "id": "minecraft:gravel"
+    },
+    {
+      "chance": 0.1,
+      "id": "rocketnautics:lunar_moss_short"
+    },
+    {
+      "chance": 0.1,
+      "id": "rocketnautics:lunar_moss_scraggly"
+    },
+    {
+      "chance": 0.1,
+      "id": "rocketnautics:lunar_moss_stiff"
+    }
+  ]
+}
