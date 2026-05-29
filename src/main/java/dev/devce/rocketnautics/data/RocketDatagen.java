@@ -38,7 +38,7 @@ public class RocketDatagen {
         RegistrySetBuilder registry = new RegistrySetBuilder();
         registry.add(Registries.DIMENSION_TYPE, DimensionTypes::bootstrap);
         registry.add(Registries.LEVEL_STEM, LevelStems::bootstrap);
-        registry.add(Registries.BIOME, BiomeData::bootstrap);
+        registry.add(Registries.BIOME, RocketBiomes::bootstrap);
         registry.add(NeoForgeRegistries.Keys.BIOME_MODIFIERS, BiomeModifiers::bootstrap);
         registry.add(Registries.PLACED_FEATURE, PlacedFeatures::bootstrap);
         registry.add(Registries.CONFIGURED_FEATURE, ConfiguredFeatures::bootstrap);

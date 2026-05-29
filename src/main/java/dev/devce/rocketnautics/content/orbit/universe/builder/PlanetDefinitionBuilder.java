@@ -3,7 +3,6 @@ package dev.devce.rocketnautics.content.orbit.universe.builder;
 import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.api.orbit.FrameTree;
-import dev.devce.rocketnautics.content.orbit.*;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetExtras;
@@ -29,6 +28,9 @@ public class PlanetDefinitionBuilder {
     private final UniverseDefinitionBuilder parent;
     private @Nullable ResourceKey<Level> linkedDimension;
     private int transferHeight = 20_000;
+    private boolean renderUniverseInDimension = false;
+    private String controlDimensionDayTimeLightSource;
+
     private @Nullable IntFunction<byte[]> renderDataOverride;
     private boolean clouds = false;
     private boolean star = false;
@@ -39,6 +41,7 @@ public class PlanetDefinitionBuilder {
 
     private TimeStampedAngularCoordinates angularCoordinates;
     private Vector3d rotationAxis;
+    private Rotation startingRotation = Rotation.IDENTITY;
 
     private int ticksPerRevolution;
     private boolean tidalLock;
@@ -86,7 +89,7 @@ public class PlanetDefinitionBuilder {
             // magnitude of rotation axis needs to be angular velocity, or 2pi / period in seconds
             double mul = 40 * Math.PI / (ticksPerRevolution * rotationAxis.length());
             Vector3D angVel = new Vector3D(rotationAxis.x * mul, rotationAxis.y * mul, rotationAxis.z * mul);
-            this.angularCoordinates = new TimeStampedAngularCoordinates(DeepSpaceData.EPOCH, Rotation.IDENTITY, angVel, Vector3D.ZERO);
+            this.angularCoordinates = new TimeStampedAngularCoordinates(DeepSpaceHelper.EPOCH, startingRotation, angVel, Vector3D.ZERO);
         }
         // mu / radius^2 = acceleration at surface + centrifugal acceleration
         if (mu <= 0) {
@@ -115,7 +118,13 @@ public class PlanetDefinitionBuilder {
 
     protected PlanetDimensionData constructDimensionData() {
         if (linkedDimension == null) return null;
-        return new PlanetDimensionData(linkedDimension, transferHeight);
+        if (controlDimensionDayTimeLightSource != null) {
+            FrameTree f = parent.getFrameByName(controlDimensionDayTimeLightSource);
+            if (f != null) {
+                return new PlanetDimensionData(linkedDimension, transferHeight, renderUniverseInDimension, f.getId());
+            }
+        }
+        return new PlanetDimensionData(linkedDimension, transferHeight, renderUniverseInDimension);
     }
 
     protected PlanetExtras constructExtras() {
@@ -135,6 +144,16 @@ public class PlanetDefinitionBuilder {
 
     public PlanetDefinitionBuilder setDimensionTransferHeight(int transferHeight) {
         this.transferHeight = transferHeight;
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setRenderUniverseInDimension(boolean renderUniverseInDimension) {
+        this.renderUniverseInDimension = renderUniverseInDimension;
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setControlDimensionDayTimeLightSource(String name) {
+        this.controlDimensionDayTimeLightSource = name;
         return this;
     }
 
@@ -177,6 +196,11 @@ public class PlanetDefinitionBuilder {
         return this;
     }
 
+    public PlanetDefinitionBuilder setStartingRotation(Rotation startingRotation) {
+        this.startingRotation = startingRotation;
+        return this;
+    }
+
     public PlanetDefinitionBuilder setTicksPerRevolution(int ticksPerRevolution) {
         this.ticksPerRevolution = ticksPerRevolution;
         return this;
@@ -206,7 +230,7 @@ public class PlanetDefinitionBuilder {
     }
 
     public PlanetDefinitionBuilder setCircularOrbit(@NotNull PointGravitySource orbited, @NotNull Vector3D position, @NotNull Vector3D orbitAxis) {
-        return this.setCircularOrbit(orbited, position, orbitAxis, DeepSpaceData.EPOCH);
+        return this.setCircularOrbit(orbited, position, orbitAxis, DeepSpaceHelper.EPOCH);
     }
 
     public PlanetDefinitionBuilder setCircularOrbit(@NotNull String gravitySourceName, @NotNull Vector3D position, @NotNull Vector3D orbitAxis, @NotNull AbsoluteDate positionDate) {
@@ -227,7 +251,7 @@ public class PlanetDefinitionBuilder {
     }
 
     public PlanetDefinitionBuilder setCircularOrbit(@NotNull PointGravitySource orbited, double orbitPeriodSecs, @NotNull Vector3D orbitAxis) {
-        return this.setCircularOrbit(orbited, orbitPeriodSecs, orbitAxis, orbitAxis.orthogonal(), DeepSpaceData.EPOCH);
+        return this.setCircularOrbit(orbited, orbitPeriodSecs, orbitAxis, orbitAxis.orthogonal(), DeepSpaceHelper.EPOCH);
     }
 
     public PlanetDefinitionBuilder setCircularOrbit(@NotNull String gravitySourceName, double orbitPeriodSecs, @NotNull Vector3D orbitAxis, @NotNull Vector3D positionDirection, @NotNull AbsoluteDate positionDate) {

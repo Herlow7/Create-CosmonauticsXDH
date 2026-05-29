@@ -1,13 +1,11 @@
 package dev.devce.rocketnautics.content.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.exceptions.CommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
-import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -25,7 +23,7 @@ public final class TimescaleCommand {
                                     int value = IntegerArgumentType.getInteger(context, "value");
                                     ServerPlayer player = context.getSource().getPlayer();
                                     if (player == null) return 0;
-                                    if (!DeepSpaceData.isDeepSpace(player.level())) {
+                                    if (!DeepSpaceHelper.isDeepSpace(player.level())) {
                                         throw NOT_IN_INSTANCE.create();
                                     }
                                     DeepSpaceInstance instance = DeepSpaceData.getInstance(context.getSource().getServer())
@@ -43,7 +41,7 @@ public final class TimescaleCommand {
                                 .executes(context -> {
                                     ServerPlayer player = context.getSource().getPlayer();
                                     if (player == null) return 0;
-                                    if (!DeepSpaceData.isDeepSpace(player.level())) {
+                                    if (!DeepSpaceHelper.isDeepSpace(player.level())) {
                                         throw NOT_IN_INSTANCE.create();
                                     }
                                     DeepSpaceInstance instance = DeepSpaceData.getInstance(context.getSource().getServer())

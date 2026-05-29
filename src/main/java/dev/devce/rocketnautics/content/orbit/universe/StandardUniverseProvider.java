@@ -1,6 +1,7 @@
 package dev.devce.rocketnautics.content.orbit.universe;
 
 import dev.devce.rocketnautics.client.PlanetColors;
+import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.universe.builder.UniverseDefinitionBuilder;
 import net.minecraft.world.level.Level;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
@@ -148,16 +149,11 @@ public final class StandardUniverseProvider {
                 .cubePlanet(p -> p
                         .setFrameName("moon")
                         .setShadowLightSource("sol")
+                        .setLinkedDimension(RocketDimensions.MOON)
+                        .setDimensionTransferHeight(20000)
+                        .setRenderUniverseInDimension(true)
+                        .setControlDimensionDayTimeLightSource("sol")
                         .setAccelerationAtSurface(2)
-                        .setRenderDataOverride(i -> {
-                            byte[] data = new byte[PlanetColors.ARRAY_SIZE];
-                            for (int j = 0; j < 256; j++) {
-                                for (int k = 0; k < 256; k++) {
-                                    data[j + 256 * k] = PlanetColors.MOON_1;
-                                }
-                            }
-                            return data;
-                        })
                         .setCircularOrbit("overworld", lunarMonthInOverworldDays * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                         .radiusFromDistance(d -> (d - overworldRadius) * 3 / 40) // roughly based on the angular size of the moon in the overworld
                         .setTidalLocked());

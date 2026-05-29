@@ -162,7 +162,7 @@ public class RocketTags {
     }
 
     public enum BiomeTags {
-        LUNAR_MARIA, LUNAR_HIGHLANDS;
+        LUNAR_MARIA, LUNAR_HIGHLANDS, LUNAR_CHASM;
 
         public final TagKey<Biome> tag;
 

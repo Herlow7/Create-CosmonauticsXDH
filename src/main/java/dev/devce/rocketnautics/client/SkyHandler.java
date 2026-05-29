@@ -11,7 +11,7 @@ import dev.devce.rocketnautics.RocketConfig;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
-import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
+import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.network.PlanetMapRequestPayload;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -42,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @EventBusSubscriber(modid = RocketNautics.MODID, value = Dist.CLIENT)
 public class SkyHandler {
+    public static final float SKYBOX_DISTANCE = 100; // minecraft renders everything in the default skybox at 100 blocks out
     public static boolean debugSonicBoom = false;
     
     /**
@@ -76,9 +77,15 @@ public class SkyHandler {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
         
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null || DeepSpaceData.isDeepSpace()) return;
+        if (mc.level == null || mc.player == null || DeepSpaceHelper.isDeepSpace()) return;
 
-        Camera camera = mc.gameRenderer.getMainCamera();
+        PoseStack poseStack = event.getPoseStack();
+        poseStack.pushPose();
+        poseStack.mulPose(event.getModelViewMatrix());
+        Camera camera = event.getCamera();
+
+        DeepSpaceHandler.renderUniverseForLevel(mc.level.dimension(), camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
+
         double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
         if (camY < 1000.0) return;
 
@@ -86,25 +93,15 @@ public class SkyHandler {
         float visibility = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
         if (visibility <= 0) return;
 
-        PoseStack poseStack = event.getPoseStack();
         float celestialAngle = mc.level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
         
         // Render custom high-fidelity space stars rotating naturally with the camera!
         renderSpaceStars(poseStack, visibility, camera, celestialAngle);
 
-        poseStack.pushPose();
-
         Matrix4f matrix = poseStack.last().pose();
-        matrix.identity();
-        
-        // Counteract camera rotation to render in fixed screen-space or world-aligned space
-        Quaternionf invRot = new Quaternionf(camera.rotation());
-        invRot.conjugate();
-        poseStack.mulPose(invRot);
 
-        int renderDist = mc.options.renderDistance().get();
         // Calculate parallax based on altitude: higher means less parallax (planet seems further)
-        float parallaxFactor = (float) (renderDist / Math.max(100.0, camY));
+        float parallaxFactor = (float) (SKYBOX_DISTANCE / Math.max(100.0, camY));
         double camX = camera.getPosition().x;
         double camZ = camera.getPosition().z;
 
@@ -122,20 +119,20 @@ public class SkyHandler {
         }
 
         // Render planet with layered effects (Map + Clouds + Halo)
-        renderPlanet(PLANET_TEXTURE_OBJ_LAST, camX, camY, camZ, renderDist, parallaxFactor, matrix, texFade * visibility, celestialAngle);
-        renderPlanet(PLANET_TEXTURE_OBJ, camX, camY, camZ, renderDist, parallaxFactor, matrix, (1 - texFade) * visibility, celestialAngle);
+        renderPlanet(PLANET_TEXTURE_OBJ_LAST, camX, camY, camZ, parallaxFactor, matrix, texFade * visibility, celestialAngle);
+        renderPlanet(PLANET_TEXTURE_OBJ, camX, camY, camZ, parallaxFactor, matrix, (1 - texFade) * visibility, celestialAngle);
         poseStack.popPose();
     }
 
     /**
      * Renders the planet quad with Map, Clouds, and Halo layers.
      */
-    private static void renderPlanet(PlanetRenderInfo planet, double camX, double camY, double camZ, float renderDist, float parallaxFactor, Matrix4f matrix, float visibility, float celestialAngle) {
+    private static void renderPlanet(PlanetRenderInfo planet, double camX, double camY, double camZ, float parallaxFactor, Matrix4f matrix, float visibility, float celestialAngle) {
         if (visibility <= 0) return;
 
         // Calculate relative position based on parallax
         float relX = (float) ((planet.getCenterX() - camX) * parallaxFactor);
-        float relY = -renderDist; // Render "below" the player
+        float relY = -SKYBOX_DISTANCE; // Render "below" the player
         float relZ = (float) ((planet.getCenterZ() - camZ) * parallaxFactor);
 
         float prettyness = computePrettyness(planet, camY);
@@ -147,7 +144,7 @@ public class SkyHandler {
         double trueSize = SkyDataHandler.toTrueSize(planet.getPowerSize());
         double optimalSize = camY * (2 << SkyDataHandler.SCALE_FACTOR);
         double result = Math.min(prettyness > 0 ? optimalSize : trueSize, SkyDataHandler.toTrueSize(SkyDataHandler.MAX_POWER_SIZE));
-        float size = (float) (result * (renderDist / Math.max(100.0, camY)));
+        float size = (float) (result * (SKYBOX_DISTANCE / Math.max(100.0, camY)));
 
         // Setup rendering state
         RenderSystem.enableBlend();
@@ -1598,17 +1595,12 @@ public class SkyHandler {
         RenderSystem.disableDepthTest();
         
         poseStack.pushPose();
-        // Stars are rendered in camera-relative space: camera is at origin (0,0,0) in this coordinate system.
-        // First, undo camera rotation so we render in a fixed celestial frame
-        org.joml.Quaternionf invCamRot = new org.joml.Quaternionf(camera.rotation()).conjugate();
-        poseStack.mulPose(invCamRot);
         
         // Rotate the entire starfield slowly around the X axis in sync with the celestial sphere (Sun/Moon orbit)
         poseStack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(celestialAngle * 360.0f));
         
         Matrix4f matrix = poseStack.last().pose();
-        // Use radius=8 — small enough to always be inside the far clip plane (even at 2-chunk render distance)
-        float radius = 8.0f;
+        float radius = SKYBOX_DISTANCE;
                 // --- Draw Stars (Constellation lines are completely removed so players can discover them organically!) ---
         RenderSystem.setShader(GameRenderer::getPositionColorShader);
         BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
@@ -1646,7 +1638,7 @@ public class SkyHandler {
             float vy = star.z * ux - star.x * uz;
             float vz = star.x * uy - star.y * ux;
             
-            float s = star.size * 0.010f;
+            float s = star.size * 0.1f;
             
             boolean isTargeted = false;
             if (isUsingSpyglass && star.type == 2) {
@@ -2214,9 +2206,6 @@ public class SkyHandler {
         RenderSystem.setShaderTexture(0, NEBULA_TEXTURE_ID);
         
         poseStack.pushPose();
-        // Center on camera by counteracting its rotation in rendering context
-        org.joml.Quaternionf invCamRot = new org.joml.Quaternionf(camera.rotation()).conjugate();
-        poseStack.mulPose(invCamRot);
         
         // Rotate extremely slowly, independent of stars
         float slowAngle = (System.currentTimeMillis() % 1200000) / 1200000.0f * 360.0f;
@@ -2226,7 +2215,7 @@ public class SkyHandler {
         Tesselator tesselator = Tesselator.getInstance();
         BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
         
-        float size = 9.5f; // slightly larger than stars (radius 8) so stars sit in/in front of the nebula, but inside far clip plane!
+        float size = SKYBOX_DISTANCE + 0.5f; // slightly larger than stars so stars sit in/in front of the nebula, but inside far clip plane!
         float alpha = 0.45f; // soft overall visibility
         
         // Render large textured quads on 4 vertical sides and top/bottom to form a beautiful cosmic envelope

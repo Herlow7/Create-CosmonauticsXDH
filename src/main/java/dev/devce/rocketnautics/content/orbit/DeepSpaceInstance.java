@@ -1,6 +1,7 @@
 package dev.devce.rocketnautics.content.orbit;
 
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
+import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
 import dev.devce.rocketnautics.content.physics.SpaceTransitionHandler;
@@ -140,9 +141,9 @@ public final class DeepSpaceInstance {
         // update position
         position.propagate(manager.getUniverse());
         // handle render data
-        if (forceClientSync || server.getTickCount() % 20 == 0) {
+        if (forceClientSync || manager.shouldSendRegularPackets(1)) {
             forceClientSync = false;
-            ServerLevel deepSpace = server.getLevel(DeepSpaceData.DEEP_SPACE_DIM);
+            ServerLevel deepSpace = server.getLevel(RocketDimensions.DEEP_SPACE);
             List<ServerPlayer> players = deepSpace.getPlayers(p -> boundingBox().contains(p.position()));
             for (ServerPlayer player : players) {
                 PacketDistributor.sendToPlayer(player, DeepSpacePositionPayload.of(position, manager.getUniverse()));

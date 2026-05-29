@@ -1,5 +1,6 @@
 package dev.devce.rocketnautics.client;
 
+import dev.devce.rocketnautics.registry.RocketTags;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ByteLinkedOpenHashMap;
@@ -23,7 +24,6 @@ public final class PlanetColors {
 
     // TODO add more colors for sun and moon
     public static final byte SUN_1;
-    public static final byte MOON_1;
 
     public static final byte MARS_RED;
     public static final byte MARS_DARK_RED;
@@ -60,11 +60,13 @@ public final class PlanetColors {
         associateBiomeTag(Tags.Biomes.IS_STONY_SHORES, stony);
         FALLBACK = addColor(30, 120 ,40);
         // TODO separate these into "color palettes" that are associated with the cube planet
-        // Since it's a one-time sync, these color palettes could also be sent to client with the universe definition
+        // send the color palette definition with the render data to 'interpret' the byte array
         // sun
         SUN_1 = addColor(250, 230, 90);
         // moon
-        MOON_1 = addColor(160, 160, 160);
+        setBiomeColor(RocketTags.BiomeTags.LUNAR_CHASM.tag, 220, 150, 70);
+        setBiomeColor(RocketTags.BiomeTags.LUNAR_HIGHLANDS.tag, 190, 190, 190);
+        setBiomeColor(RocketTags.BiomeTags.LUNAR_MARIA.tag, 110, 110, 110);
 
         // mars
         MARS_RED = addColor(185, 80, 45);

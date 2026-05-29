@@ -1,9 +1,8 @@
 package dev.devce.rocketnautics.data.worldgen.noise;
 
 import dev.devce.rocketnautics.RocketNautics;
-import dev.devce.rocketnautics.data.worldgen.BiomeData;
+import dev.devce.rocketnautics.data.worldgen.RocketBiomes;
 import dev.devce.rocketnautics.registry.RocketBlocks;
-import dev.devce.rocketnautics.registry.RocketTags;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
@@ -31,7 +30,7 @@ public class NoiseGenSettings {
                 SurfaceRules.sequence(
                         SurfaceRules.ifTrue(SurfaceRules.verticalGradient("bedrock_floor", VerticalAnchor.bottom(), VerticalAnchor.aboveBottom(5)), SurfaceRules.state(Blocks.BEDROCK.defaultBlockState())),
                         SurfaceRules.ifTrue(
-                                SurfaceRules.isBiome(BiomeData.LUNAR_MARIA, BiomeData.LUNAR_BASALT_SPIKES, BiomeData.LUNAR_BASALT_CHASM),
+                                SurfaceRules.isBiome(RocketBiomes.LUNAR_MARIA, RocketBiomes.LUNAR_BASALT_SPIKES, RocketBiomes.LUNAR_BASALT_CHASM),
                                 SurfaceRules.sequence(
                                         SurfaceRules.ifTrue(
                                                 SurfaceRules.hole(),
@@ -41,7 +40,7 @@ public class NoiseGenSettings {
                                                                 SurfaceRules.state(Blocks.AIR.defaultBlockState())
                                                         ),
                                                         SurfaceRules.ifTrue(
-                                                                SurfaceRules.isBiome(BiomeData.LUNAR_MARIA),
+                                                                SurfaceRules.isBiome(RocketBiomes.LUNAR_MARIA),
                                                                 SurfaceRules.ifTrue(
                                                                         SurfaceRules.not(SurfaceRules.stoneDepthCheck(1, false, 5, CaveSurface.FLOOR)),
                                                                         SurfaceRules.ifTrue(
@@ -65,13 +64,13 @@ public class NoiseGenSettings {
                                 )
                         ),
                         SurfaceRules.ifTrue(
-                                SurfaceRules.isBiome(BiomeData.LUNAR_AGED_CHASM, BiomeData.LUNAR_AGED_SPIKES),
+                                SurfaceRules.isBiome(RocketBiomes.LUNAR_AGED_CHASM, RocketBiomes.LUNAR_AGED_SPIKES),
                                 SurfaceRules.sequence(
                                         SurfaceRules.state(RocketBlocks.LUNAR_AGED_BASALT.getDefaultState())
                                 )
                         ),
                         SurfaceRules.ifTrue(
-                                SurfaceRules.isBiome(BiomeData.LUNAR_HIGHLANDS),
+                                SurfaceRules.isBiome(RocketBiomes.LUNAR_HIGHLANDS),
                                 SurfaceRules.sequence(
                                         SurfaceRules.ifTrue(
                                                 SurfaceRules.stoneDepthCheck(-3, false, 11, CaveSurface.FLOOR),

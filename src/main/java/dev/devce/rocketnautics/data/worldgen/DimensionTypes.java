@@ -20,7 +20,7 @@ public class DimensionTypes {
     public static void bootstrap(BootstrapContext<DimensionType> context) {
         context.register(
                 DEEP_SPACE, new DimensionType(
-                        OptionalLong.empty(),
+                        OptionalLong.of(18000),
                         true,
                         true,
                         false,

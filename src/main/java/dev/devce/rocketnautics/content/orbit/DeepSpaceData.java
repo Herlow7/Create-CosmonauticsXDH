@@ -1,30 +1,26 @@
 package dev.devce.rocketnautics.content.orbit;
 
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
+import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.universe.StandardUniverseProvider;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import dev.devce.rocketnautics.network.UniverseDefinitionPayload;
+import dev.devce.rocketnautics.network.UniverseTimeSyncPayload;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -34,38 +30,22 @@ import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.orekit.time.AbsoluteDate;
-import org.orekit.time.TimeOffset;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
 @EventBusSubscriber(modid = RocketNautics.MODID)
 public class DeepSpaceData extends SavedData {
-    public static final ResourceKey<Level> DEEP_SPACE_DIM = ResourceKey.create(Registries.DIMENSION,
-            ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "deep_space"));
     public static final int LOGICAL_INSTANCE_HEIGHT = 1000;
 
     public static final String ID = "cosmonautics_deep_space_data";
 
-    public static final AbsoluteDate EPOCH = AbsoluteDate.ARBITRARY_EPOCH;
-    private static final long ATTOS_IN_TICK = 50000000000000000L;
-    public static final TimeOffset TICK = new TimeOffset(0L, ATTOS_IN_TICK);
+    public static boolean tooSoon(MinecraftServer server) {
+        return server.getLevel(RocketDimensions.DEEP_SPACE) == null;
+    }
 
     public static DeepSpaceData getInstance(MinecraftServer server) {
-        ServerLevel deepSpace = server.getLevel(DEEP_SPACE_DIM);
+        ServerLevel deepSpace = server.getLevel(RocketDimensions.DEEP_SPACE);
         DeepSpaceData data = deepSpace.getChunkSource().getDataStorage().computeIfAbsent(new Factory<>(DeepSpaceData::new, DeepSpaceData::load, null), ID);
         return data;
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static boolean isDeepSpace() {
-        return Minecraft.getInstance().level.dimension() == DEEP_SPACE_DIM;
-    }
-
-    public static boolean isDeepSpace(Level level) {
-        return level.dimension() == DEEP_SPACE_DIM;
-    }
-
-    public static boolean isDeepSpace(ResourceKey<Level> key) {
-        return key == DEEP_SPACE_DIM;
     }
 
     @SubscribeEvent
@@ -88,16 +68,26 @@ public class DeepSpaceData extends SavedData {
     private long universeTicks;
     private int nextFreeID = 0;
 
+    protected float lastTickRate = 20;
+
     public void tick(MinecraftServer server) {
         universeTicks += 1;
         instances.values().forEach(i -> i.tick(server));
         setDirty();
+        if (server.tickRateManager().tickrate() != lastTickRate || shouldSendRegularPackets(1)) {
+            lastTickRate = server.tickRateManager().tickrate();
+            PacketDistributor.sendToAllPlayers(new UniverseTimeSyncPayload(universeTicks, lastTickRate));
+        }
+    }
+
+    public boolean shouldSendRegularPackets(int secondsPerPacket) {
+        return universeTicks % (int) lastTickRate * secondsPerPacket == 0;
     }
 
     private void debugInstance() {
         // execute in rocketnautics:deep_space run tp Dev 48 1016 16
         DeepSpaceInstance instance = claimNewInstance(2);
-        instance.getPosition().init(universe, "overworld", new TimeStampedPVCoordinates(EPOCH, new Vector3D(0, 0, 9_000_000D), new Vector3D(0, 3_300, 0)));
+        instance.getPosition().init(universe, "overworld", new TimeStampedPVCoordinates(DeepSpaceHelper.EPOCH, new Vector3D(0, 0, 9_000_000D), new Vector3D(0, 3_300, 0)));
     }
 
     public DeepSpaceInstance claimNewInstance(int chunkSize) {
@@ -158,14 +148,7 @@ public class DeepSpaceData extends SavedData {
     }
 
     public AbsoluteDate getUniverseTime() {
-        return EPOCH.shiftedBy(TICK.multiply(universeTicks));
-    }
-
-    public static AbsoluteDate getTime(long ticks) {
-        if (ticks < 0) {
-            return EPOCH.shiftedBy(TICK.negate().multiply(-ticks));
-        }
-        return EPOCH.shiftedBy(TICK.multiply(ticks));
+        return DeepSpaceHelper.getDateByTicks(universeTicks);
     }
 
     @Override

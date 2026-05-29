@@ -6,12 +6,11 @@ import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
-public class BiomeData {
+public class RocketBiomes {
     public static ResourceKey<Biome> LUNAR_MARIA = register("lunar_maria");
     public static ResourceKey<Biome> LUNAR_HIGHLANDS = register("lunar_highlands");
     public static ResourceKey<Biome> LUNAR_BASALT_CHASM = register("lunar_basalt_chasm");

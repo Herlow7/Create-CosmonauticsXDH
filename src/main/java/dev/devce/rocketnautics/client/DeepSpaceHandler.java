@@ -6,7 +6,6 @@ import com.mojang.blaze3d.vertex.*;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
-import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
@@ -21,8 +20,11 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.*;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.ArrayListDeque;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -32,6 +34,7 @@ import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector3d;
 import org.orekit.frames.Frame;
 import org.orekit.orbits.Orbit;
 import org.orekit.time.AbsoluteDate;
@@ -46,20 +49,40 @@ public final class DeepSpaceHandler {
 
     private static @Nullable UniverseDefinition UNIVERSE;
     private static final Int2ObjectAVLTreeMap<IntObjectPair<DeepSpaceTexture>> KNOWN_RENDER_DATA = new Int2ObjectAVLTreeMap<>();
+    
+    private static long receivedUniverseDateTick = -1;
+    private static AbsoluteDate receivedUniverseDate;
+    private static float receivedUniverseTickrate;
 
     private static long receivedPositionTick = -1;
     private static final DeepSpacePosition receivedPosition = new DeepSpacePosition();
 
     private static final ArrayListDeque<Pair<AbsoluteDate, Orbit>> positionPredictions = new ArrayListDeque<>(100);
     private static final DeepSpacePosition nextPrediction = new DeepSpacePosition();
+    
+    private static int getLocalMinecraftTicks() {
+        return Minecraft.getInstance().levelRenderer.getTicks();
+    }
 
     public static void receiveUniverse(UniverseDefinition definition) {
         UNIVERSE = definition;
         receivedPosition.reset();
         nextPrediction.reset();
         receivedPositionTick = -1;
+        receivedUniverseDateTick = -1;
         KNOWN_RENDER_DATA.values().forEach(p -> p.right().retire());
         KNOWN_RENDER_DATA.clear();
+    }
+    
+    public static void receiveUniverseTime(long universeTicks, float serverTickRate) {
+        receivedUniverseDateTick = getLocalMinecraftTicks();
+        receivedUniverseDate = DeepSpaceHelper.getDateByTicks(universeTicks);
+        receivedUniverseTickrate = serverTickRate;
+    }
+
+    public static @Nullable AbsoluteDate getPredictedUniverseDate(float partial) {
+        if (receivedUniverseDateTick == -1) return null;
+        return new AbsoluteDate(receivedUniverseDate, (getLocalMinecraftTicks() - receivedUniverseDateTick + partial) * receivedUniverseTickrate / 400f);
     }
 
     public static boolean hasReceivedPosition() {
@@ -68,7 +91,7 @@ public final class DeepSpaceHandler {
 
     public static void receivePosition(FriendlyByteBuf buf) {
         if (UNIVERSE != null) {
-            receivedPositionTick = Minecraft.getInstance().levelRenderer.getTicks();
+            receivedPositionTick = getLocalMinecraftTicks();
             receivedPosition.read(buf, UNIVERSE);
             positionPredictions.clear();
             receivedPosition.copyTo(nextPrediction);
@@ -84,7 +107,7 @@ public final class DeepSpaceHandler {
     }
 
     public static AbsoluteDate getRenderDate(float partial) {
-        return getRenderDate(Minecraft.getInstance().levelRenderer.getTicks(), partial);
+        return getRenderDate(getLocalMinecraftTicks(), partial);
     }
 
     public static AbsoluteDate getRenderDate(long ticksSince, float partial) {
@@ -172,41 +195,40 @@ public final class DeepSpaceHandler {
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY || UNIVERSE == null) return;
-        if (!DeepSpaceData.isDeepSpace()) return;
+        if (!DeepSpaceHelper.isDeepSpace()) return;
+        if (receivedPositionTick == -1) return;
+        PoseStack poseStack = event.getPoseStack();
+        poseStack.pushPose();
+        poseStack.mulPose(event.getModelViewMatrix());
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(true);
+        AbsoluteDate currentDate = getRenderDate(partial);
+        renderUniverse(null, poseStack, null, event.getPartialTick().getGameTimeDeltaTicks(),
+                partial, currentDate, receivedPosition.getPosition(currentDate), receivedPosition.getFrame(), event.getCamera());
+        poseStack.popPose();
+    }
+
+    private static void renderUniverse(@Nullable CubePlanet exclude, PoseStack poseStack, @Nullable Quaternionf rotation, float deltaTick, float partialTick, AbsoluteDate renderDate, Vector3D pos, Frame posFrame, Camera camera) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return;
-        if (receivedPositionTick == -1) return;
-        Camera camera = mc.gameRenderer.getMainCamera();
 
-        PoseStack poseStack = event.getPoseStack();
+        poseStack.pushPose();
 
-        // 1. Render custom cosmic nebula and HD space stars first (these handle camera rotation internally!)
+        // 1. Render custom cosmic nebula and HD space stars first
         // TODO level time is fixed in deep space, figure out a better solution. Position in absolute frame, then have sol moving in the absolute frame?
-        float celestialAngle = mc.level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
+        float celestialAngle = mc.level.getTimeOfDay(deltaTick);
         SkyHandler.renderCosmicNebula(poseStack, camera, celestialAngle);
         SkyHandler.renderSpaceStars(poseStack, 1.0f, camera, celestialAngle);
 
-        // 2. Prepare the pose stack for celestial bodies / planets rendering
-        poseStack.pushPose();
-
-        Matrix4f matrix = poseStack.last().pose();
-        matrix.identity();
-
-        Quaternionf invRot = new Quaternionf(camera.rotation());
-        invRot.conjugate();
-        poseStack.mulPose(invRot);
-
-        int renderDist = mc.options.renderDistance().get();
+        // 2.  celestial bodies / planets rendering
         IntList needRenderData = new IntArrayList();
-        AbsoluteDate currentDate = getRenderDate(event.getPartialTick().getGameTimeDeltaPartialTick(true));
-        Vector3D posInFrame = receivedPosition.getPosition(currentDate);
         Iterator<Pair<Vector3D, CubePlanet>> iter = UNIVERSE.getPlanets().stream()
-                .map(planet -> Pair.of(planet.posInMyFrame(currentDate, posInFrame, receivedPosition.getFrame()), planet))
+                .map(planet -> Pair.of(planet.posInMyFrame(renderDate, pos, posFrame), planet))
                 .sorted(Comparator.comparingDouble(p -> -p.left().getNormSq())).iterator(); // sort descending, we want to render furthest away first.
         while (iter.hasNext()) {
             Pair<Vector3D, CubePlanet> planet = iter.next();
+            if (planet.right() == exclude) continue;
             poseStack.pushPose();
-            if (renderPlanet(planet.right(), planet.left(), poseStack, currentDate, renderDist, celestialAngle, event.getPartialTick().getGameTimeDeltaTicks())) {
+            if (renderPlanet(planet.right(), planet.left(), poseStack, renderDate, celestialAngle, partialTick)) {
                 needRenderData.add(planet.right().id());
             }
             poseStack.popPose();
@@ -215,14 +237,14 @@ public final class DeepSpaceHandler {
         poseStack.popPose();
     }
 
-    private static boolean renderPlanet(CubePlanet planet, Vector3D ourPosInPlanetFrame, PoseStack poseStack, AbsoluteDate date, float renderDist, float celestialAngle, float partialTicks) {
+    private static boolean renderPlanet(CubePlanet planet, Vector3D ourPosInPlanetFrame, PoseStack poseStack, AbsoluteDate date, float celestialAngle, float partialTicks) {
         assert UNIVERSE != null;
         Minecraft mc = Minecraft.getInstance();
         IntObjectPair<DeepSpaceTexture> render = KNOWN_RENDER_DATA.get(planet.id());
         if (render == null || render.leftInt() != SkyHandler.getMaximumScale() || render.right() == null) {
             return true;
         }
-        float parallaxFactor = (float) (renderDist / Math.max(1, ourPosInPlanetFrame.getNorm()));
+        float parallaxFactor = (float) (SkyHandler.SKYBOX_DISTANCE / Math.max(1, ourPosInPlanetFrame.getNorm()));
         poseStack.translate(-ourPosInPlanetFrame.getX() * parallaxFactor, -ourPosInPlanetFrame.getY() * parallaxFactor, -ourPosInPlanetFrame.getZ() * parallaxFactor);
         poseStack.pushPose();
         poseStack.mulPose(DeepSpaceHelper.adapt(planet.getRotationAtTime(date)).get(new Quaternionf()));
@@ -299,7 +321,7 @@ public final class DeepSpaceHandler {
             if (SkyHandler.CLOUD_TEXTURE_ID != null) {
                 RenderSystem.setShaderTexture(0, SkyHandler.CLOUD_TEXTURE_ID);
                 long factor = 1000L; // MUCH slower
-                float timeOffset = (float) ((date.durationFrom(DeepSpaceData.EPOCH) % (20L * factor)) / (float) factor);
+                float timeOffset = (float) ((date.durationFrom(DeepSpaceHelper.EPOCH) % (20L * factor)) / (float) factor);
                 
                 // Cloud Shadows
                 double theta = 2.0 * Math.PI * celestialAngle;
@@ -670,5 +692,17 @@ public final class DeepSpaceHandler {
         }
         
         return ((long)r << 24) | ((long)g << 16) | ((long)b << 8) | a;
+    }
+    
+    public static void renderUniverseForLevel(ResourceKey<Level> dimension, Vec3 position, PoseStack poseStack, float partialDelta, float partialTick, Camera camera) {
+        if (UNIVERSE == null || receivedUniverseDateTick == -1) return;
+        CubePlanet planet = UNIVERSE.getPlanetByDimension(dimension);
+        if (planet == null || planet.linkedDimension() == null || !planet.linkedDimension().renderUniverseInDimension()) return;
+        poseStack.pushPose();
+        AbsoluteDate date = getPredictedUniverseDate(partialTick);
+        var globalCoords = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(position.toVector3f().get(new Vector3d()), null, planet, date);
+        poseStack.mulPose(DeepSpaceHelper.adapt(globalCoords.second()).get(new Quaternionf()));
+        renderUniverse(planet, poseStack, null, partialDelta, partialTick, date, globalCoords.first().getPosition(), planet.orekitFrame(), camera);
+        poseStack.popPose();
     }
 }

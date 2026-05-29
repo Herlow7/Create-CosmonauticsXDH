@@ -104,6 +104,12 @@ public class NetworkHandler {
                 (payload, context) -> context.enqueueWork(payload::handle)
         );
 
+        registrar.playToClient(
+                UniverseTimeSyncPayload.TYPE,
+                UniverseTimeSyncPayload.CODEC,
+                (payload, context) -> context.enqueueWork(() -> handleUniverseTime(payload.universeTicks(), payload.serverTickRate()))
+        );
+
     }
 
     private static void handleSputnikSync(net.minecraft.world.entity.player.Player player, net.minecraft.core.BlockPos pos, net.minecraft.nbt.CompoundTag graphData) {
@@ -203,5 +209,10 @@ public class NetworkHandler {
     @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
     private static void handleUniverseDefinition(UniverseDefinition definition) {
         DeepSpaceHandler.receiveUniverse(definition);
+    }
+
+    @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
+    private static void handleUniverseTime(long universeTicks, float serverTickRate) {
+        DeepSpaceHandler.receiveUniverseTime(universeTicks, serverTickRate);
     }
 }

@@ -1,6 +1,5 @@
 package dev.devce.rocketnautics.content.orbit.universe;
 
-import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import net.minecraft.network.FriendlyByteBuf;
 import org.hipparchus.analysis.UnivariateFunction;
@@ -18,7 +17,7 @@ import java.util.Collection;
 import java.util.Optional;
 
 public class DeepSpacePosition {
-    private static final Orbit FALLBACK = new CartesianOrbit(new TimeStampedPVCoordinates(DeepSpaceData.EPOCH, Vector3D.PLUS_I, Vector3D.PLUS_J), Frame.getRoot(), 1);
+    private static final Orbit FALLBACK = new CartesianOrbit(new TimeStampedPVCoordinates(DeepSpaceHelper.EPOCH, Vector3D.PLUS_I, Vector3D.PLUS_J), Frame.getRoot(), 1);
     private static final BrentSolver SOLVER = new BrentSolver();
 
     // generated fields (for read/write operations)
@@ -57,12 +56,12 @@ public class DeepSpacePosition {
         // check if we have entered the domain of a different gravity source;
         // if so, find out exactly when and update our orbit.
         Frame currentFrame = currentOrbit.getFrame();
-        PointGravitySource shouldControlling = determineControllingGravitySource(currentOrbit.getPVCoordinates(DeepSpaceData.getTime(localUniverseTicks + timescale), currentFrame), currentFrame, universe);
+        PointGravitySource shouldControlling = determineControllingGravitySource(currentOrbit.getPVCoordinates(DeepSpaceHelper.getDateByTicks(localUniverseTicks + timescale), currentFrame), currentFrame, universe);
         if (shouldControlling.orekitFrame() != currentFrame) {
             // we want to find the point on the current orbit that intersects the smaller sphere of influence.
             // we know the point is between the time we were at and the time we are now at.
             // we solve this numerically via Brent's Method.
-            AbsoluteDate startTime = DeepSpaceData.getTime(localUniverseTicks);
+            AbsoluteDate startTime = DeepSpaceHelper.getDateByTicks(localUniverseTicks);
             double roi;
             Frame roiFrame;
             if (this.roi < shouldControlling.roi()) {
@@ -180,7 +179,7 @@ public class DeepSpacePosition {
     }
 
     public AbsoluteDate getLocalUniverseTime() {
-        return DeepSpaceData.getTime(localUniverseTicks);
+        return DeepSpaceHelper.getDateByTicks(localUniverseTicks);
     }
 
     public Frame getFrame() {

@@ -3,11 +3,21 @@ package dev.devce.rocketnautics.api.orbit;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.devce.rocketnautics.content.RocketDimensions;
+import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
+import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import io.netty.buffer.ByteBuf;
+import it.unimi.dsi.fastutil.Pair;
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.hipparchus.geometry.euclidean.threed.Rotation;
+import org.hipparchus.geometry.euclidean.threed.RotationConvention;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -20,9 +30,16 @@ import org.orekit.utils.PVCoordinates;
 import org.orekit.utils.TimeStampedAngularCoordinates;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
+import java.lang.Math;
+import java.util.Optional;
+import java.util.function.LongConsumer;
 import java.util.function.UnaryOperator;
 
 public class DeepSpaceHelper {
+    public static final AbsoluteDate EPOCH = AbsoluteDate.ARBITRARY_EPOCH;
+    private static final long ATTOS_IN_TICK = 50000000000000000L;
+    public static final TimeOffset TICK = new TimeOffset(0L, ATTOS_IN_TICK);
+
     public static final Codec<Vector3D> VEC3D_CODEC = RecordCodecBuilder.create(
             i -> i.group(
                     Codec.DOUBLE.fieldOf("x").forGetter(Vector3D::getX),
@@ -227,5 +244,86 @@ public class DeepSpaceHelper {
 
     public static Rotation adapt(Quaterniondc rot) {
         return new Rotation(rot.w(), rot.x(), rot.y(), rot.z(), true);
+    }
+
+    public static Pair<TimeStampedPVCoordinates, Rotation> localPositionToGlobalPositionAndRotation(Vector3dc localPosition, @Nullable Vector3dc localVelocity, CubePlanet planet, AbsoluteDate date) {
+        Rotation rotation = planet.getRotationAtTime(date);
+        rotation = rotation.compose(new Rotation(Vector3D.PLUS_J, Vector3D.PLUS_K), RotationConvention.VECTOR_OPERATOR);
+        Vector3d scaledPosition = localPosition.mul(planet.radius() / 30_000_000, new Vector3d());
+        Vector3D unrotatedPosition = new Vector3D(scaledPosition.x(), localPosition.y() + planet.radius(), scaledPosition.z());
+        if (localVelocity != null && localVelocity.lengthSquared() < 1e-5) {
+            localVelocity = new Vector3d(0, 1, 0);
+        }
+        Vector3D actualPosition = rotation.applyTo(unrotatedPosition);
+        Vector3D actualVelocity = Vector3D.ZERO;
+        if (localVelocity != null) {
+            actualVelocity = rotation.applyTo(adapt(localVelocity))
+                    .add(actualPosition.crossProduct(planet.rotationDescription().getRotationRate())); // compensate for rotation rate of the planet
+        }
+        return Pair.of(new TimeStampedPVCoordinates(date, actualPosition, actualVelocity), rotation);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public static boolean isDeepSpace() {
+        return Minecraft.getInstance().level.dimension() == RocketDimensions.DEEP_SPACE;
+    }
+
+    public static boolean isDeepSpace(Level level) {
+        return level.dimension() == RocketDimensions.DEEP_SPACE;
+    }
+
+    public static boolean isDeepSpace(ResourceKey<Level> key) {
+        return key == RocketDimensions.DEEP_SPACE;
+    }
+
+    public static AbsoluteDate getDateByTicks(long ticks) {
+        if (ticks < 0) {
+            return EPOCH.shiftedBy(TICK.negate().multiply(-ticks));
+        }
+        return EPOCH.shiftedBy(TICK.multiply(ticks));
+    }
+
+    public static boolean shouldOverrideLevelTime(UniverseDefinition universe, Level level) {
+        CubePlanet planet = universe.getPlanetByDimension(level.dimension());
+        return planet != null && planet.linkedDimension() != null && planet.linkedDimension().controlsDimensionDayTime();
+    }
+
+    public static void checkAndOverrideLevelTime(UniverseDefinition universe, AbsoluteDate date, Level level, LongConsumer overrider) {
+        // note: minecraft sun rises in +x and sets in -x
+        CubePlanet planet = universe.getPlanetByDimension(level.dimension());
+        if (planet != null && planet.linkedDimension() != null && planet.linkedDimension().controlsDimensionDayTime()) {
+            // TODO consider eclipses?
+            Optional<Vector3D> skyPos = computeSkyPos(universe, date, planet);
+            if (skyPos.isEmpty()) return;
+            // look a minute into the future to determine if we are rising or setting.
+            Optional<Vector3D> futureSkyPos = computeSkyPos(universe, date.shiftedBy(60), planet);
+            if (futureSkyPos.isEmpty()) return;
+            double currentHeightRating = skyPos.get().normalize().dotProduct(Vector3D.PLUS_J);
+            double futureHeightRating = futureSkyPos.get().normalize().dotProduct(Vector3D.PLUS_J);
+            double angleOffVertical = Math.acos(currentHeightRating);
+            long timeFrom6000 = (long) (12000 * angleOffVertical / Math.PI);
+            if (futureHeightRating > currentHeightRating) {
+                // rising, time from 18000 to 6000 or equivalently 18000 to 30000
+                overrider.accept(30000 - timeFrom6000);
+            } else {
+                // setting, time from 6000 to 18000
+                overrider.accept(6000 + timeFrom6000);
+            }
+        }
+    }
+
+    private static Optional<Vector3D> computeSkyPos(UniverseDefinition universe, AbsoluteDate date, CubePlanet planet) {
+        return universe.getFrameByID(planet.linkedDimension().controlDimensionDayTimeID()).map(sourceFrame -> {
+            try {
+                return sourceFrame.getStaticTransformTo(planet.orekitFrame(), date).transformPosition(Vector3D.ZERO);
+            } catch (Exception e) {
+                return null;
+            }
+        }).map(v -> {
+            // rotate the source into the canonical side
+            Rotation rotation = planet.getRotationAtTime(date);
+            rotation = rotation.compose(new Rotation(Vector3D.PLUS_J, Vector3D.PLUS_K), RotationConvention.VECTOR_OPERATOR);
+            return rotation.applyInverseTo(v);
+        });
     }
 }

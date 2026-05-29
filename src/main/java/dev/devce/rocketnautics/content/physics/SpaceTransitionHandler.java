@@ -2,58 +2,37 @@
 
 package dev.devce.rocketnautics.content.physics;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
+import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
-import dev.devce.rocketnautics.network.DebugLogPayload;
 import dev.devce.rocketnautics.network.SeamlessTransitionPayload;
 import dev.egg.SubLevelWarper;
-import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
-import dev.ryanhcode.sable.companion.math.BoundingBox3d;
 import dev.ryanhcode.sable.platform.SableEventPlatform;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
-import dev.ryanhcode.sable.mixinterface.entity.entities_stick_sublevels.EntityStickExtension;
-import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension;
 
-import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 import dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunkMap;
-import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ChunkLevel;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.entity.Visibility;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -63,10 +42,6 @@ import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.NotNull;
 import org.joml.*;
 import org.orekit.time.AbsoluteDate;
-import org.orekit.utils.TimeStampedPVCoordinates;
-
-import java.io.File;
-import java.util.function.BooleanSupplier;
 
 /**
  * Handles the seamless transition of ships and players between dimensions (Overworld <-> Space).
@@ -95,7 +70,7 @@ public class SpaceTransitionHandler {
 
             // Handle ships currently in the world
             ServerSubLevelContainer container = SubLevelContainer.getContainer(level);
-            if (!DeepSpaceData.isDeepSpace(level) && container != null) {
+            if (!DeepSpaceHelper.isDeepSpace(level) && container != null) {
 
                 List<UUID> shipIds = container.getAllSubLevels().stream().map(SubLevel::getUniqueId).toList();
                 for (UUID id : shipIds) {
@@ -109,7 +84,7 @@ public class SpaceTransitionHandler {
                         double captureSize = ship.boundingBox().size().length();
                         DeepSpaceInstance claimed = instance.claimNewInstance((int) (captureSize / 16 + 2));
                         Quaterniond rotation = initInstance(claimed, ship.logicalPose().position(), handle.getLinearVelocity(new Vector3d()), linked, ship);
-                        ServerLevel deepSpace = level.getServer().getLevel(DeepSpaceData.DEEP_SPACE_DIM);
+                        ServerLevel deepSpace = level.getServer().getLevel(RocketDimensions.DEEP_SPACE);
                         // Handle all players nearby
                         Map<ServerPlayer, UUID> riding = new Object2ObjectOpenHashMap<>();
                         for (ServerPlayer pl : level.getPlayers(pl -> ship.boundingBox().toMojang().inflate(10).contains(pl.position()))) {
@@ -137,7 +112,7 @@ public class SpaceTransitionHandler {
 
     public static void exitDeepSpace(MinecraftServer server, CubePlanet destination, Rotation correctionRotation, Vector3D positionInPlanetFrame, @NotNull Direction.Axis majorAxis, DeepSpaceInstance instance, Runnable afterFinished) {
         assert destination.linkedDimension() != null;
-        final ServerLevel deepSpace = server.getLevel(DeepSpaceData.DEEP_SPACE_DIM);
+        final ServerLevel deepSpace = server.getLevel(RocketDimensions.DEEP_SPACE);
         double scaleFactor = 30_000_000 / destination.radius();
         double targetHeight = destination.linkedDimension().transitionHeight() - SpaceTransitionHandler.TRANSITION_SAFE_OFFSET;
         Vector3D p = correctionRotation.applyInverseTo(positionInPlanetFrame);
@@ -251,19 +226,10 @@ public class SpaceTransitionHandler {
 
     private static Quaterniond initInstance(DeepSpaceInstance instance, Vector3dc dimPosition, Vector3dc velocity, CubePlanet planet, ServerSubLevel ship) {
         AbsoluteDate currentDate = instance.getManager().getUniverseTime();
-        Rotation rotation = planet.getRotationAtTime(currentDate);
-        rotation = rotation.compose(new Rotation(Vector3D.PLUS_J, Vector3D.PLUS_K), RotationConvention.VECTOR_OPERATOR);
-        Vector3d scaledPosition = dimPosition.mul(planet.radius() / 30_000_000, new Vector3d());
-        Vector3D unrotatedPosition = new Vector3D(scaledPosition.x(), dimPosition.y() + planet.radius() + TRANSITION_SAFE_OFFSET, scaledPosition.z());
-        if (velocity.lengthSquared() < 1e-5) {
-            velocity = new Vector3d(0, 1, 0);
-        }
-        Vector3D actualPosition = rotation.applyTo(unrotatedPosition);
-        TimeStampedPVCoordinates coords = new TimeStampedPVCoordinates(currentDate, actualPosition,
-                rotation.applyTo(DeepSpaceHelper.adapt(velocity))
-                        .add(actualPosition.crossProduct(planet.rotationDescription().getRotationRate()))); // compensate for rotation rate of the planet
-        instance.getPosition().init(instance.getManager().getUniverse(), planet.orekitFrame(), coords);
-        return DeepSpaceHelper.adapt(rotation);
+        Vector3d safe = new Vector3d(0, TRANSITION_SAFE_OFFSET, 0).add(dimPosition);
+        var globalCoords = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(safe, velocity, planet, currentDate);
+        instance.getPosition().init(instance.getManager().getUniverse(), planet.orekitFrame(), globalCoords.first());
+        return DeepSpaceHelper.adapt(globalCoords.second());
     }
 
     // TODO delay warps until chunks are loaded?

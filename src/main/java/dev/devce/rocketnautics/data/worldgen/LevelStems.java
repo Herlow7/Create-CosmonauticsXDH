@@ -20,6 +20,9 @@ import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * @see dev.devce.rocketnautics.content.RocketDimensions
+ */
 public class LevelStems {
     public static final ResourceKey<LevelStem> DEEP_SPACE = register("deep_space");
     public static final ResourceKey<LevelStem> MOON = register("moon");
@@ -48,7 +51,7 @@ public class LevelStems {
                                         Climate.Parameter.span(-2, 2),
                                         Climate.Parameter.span(-1, 1),
                                         0
-                                        ), biomes.getOrThrow(BiomeData.LUNAR_HIGHLANDS)))
+                                        ), biomes.getOrThrow(RocketBiomes.LUNAR_HIGHLANDS)))
                                 .add(Pair.of(Climate.parameters(
                                         Climate.Parameter.point(0),
                                         Climate.Parameter.point(0),
@@ -57,7 +60,7 @@ public class LevelStems {
                                         Climate.Parameter.span(-2, 2),
                                         Climate.Parameter.span(-1, 1),
                                         0
-                                ), biomes.getOrThrow(BiomeData.LUNAR_MARIA)))
+                                ), biomes.getOrThrow(RocketBiomes.LUNAR_MARIA)))
                                 .add(Pair.of(Climate.parameters(
                                         Climate.Parameter.point(0),
                                         Climate.Parameter.point(0),
@@ -66,7 +69,7 @@ public class LevelStems {
                                         Climate.Parameter.span(-2, 2),
                                         Climate.Parameter.span(-2, -1),
                                         0.01f
-                                ), biomes.getOrThrow(BiomeData.LUNAR_AGED_CHASM)))
+                                ), biomes.getOrThrow(RocketBiomes.LUNAR_AGED_CHASM)))
                                 .add(Pair.of(Climate.parameters(
                                         Climate.Parameter.point(0),
                                         Climate.Parameter.point(0),
@@ -75,7 +78,7 @@ public class LevelStems {
                                         Climate.Parameter.span(-2, 2),
                                         Climate.Parameter.span(-2, -1),
                                         0.01f
-                                ), biomes.getOrThrow(BiomeData.LUNAR_BASALT_CHASM)))
+                                ), biomes.getOrThrow(RocketBiomes.LUNAR_BASALT_CHASM)))
                                 .add(Pair.of(Climate.parameters(
                                         Climate.Parameter.point(0),
                                         Climate.Parameter.point(0),
@@ -84,7 +87,7 @@ public class LevelStems {
                                         Climate.Parameter.span(-2, 2),
                                         Climate.Parameter.span(1, 2),
                                         0
-                                ), biomes.getOrThrow(BiomeData.LUNAR_AGED_SPIKES)))
+                                ), biomes.getOrThrow(RocketBiomes.LUNAR_AGED_SPIKES)))
                                 .add(Pair.of(Climate.parameters(
                                         Climate.Parameter.point(0),
                                         Climate.Parameter.point(0),
@@ -93,7 +96,7 @@ public class LevelStems {
                                         Climate.Parameter.span(-2, 2),
                                         Climate.Parameter.span(1, 2),
                                         0
-                                ), biomes.getOrThrow(BiomeData.LUNAR_BASALT_SPIKES)))
+                                ), biomes.getOrThrow(RocketBiomes.LUNAR_BASALT_SPIKES)))
                                 .build())),
                         noise.getOrThrow(NoiseGenSettings.MOON_GENERATOR)
                 )

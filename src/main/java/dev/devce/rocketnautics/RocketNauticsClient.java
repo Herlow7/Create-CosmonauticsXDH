@@ -30,6 +30,7 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.*;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -236,6 +237,12 @@ public class RocketNauticsClient {
     public static void registerDimensionEffects(RegisterDimensionSpecialEffectsEvent event) {
         event.register(DimensionTypes.DEEP_SPACE_EFFECTS,
                 new DimensionSpecialEffects(Float.NaN, false, DimensionSpecialEffects.SkyType.NONE, false, false) {
+
+                    @Override
+                    public float @Nullable [] getSunriseColor(float p_108872_, float p_108873_) {
+                        return null;
+                    }
+
                     @Override
                     public Vec3 getBrightnessDependentFogColor(Vec3 fogColor, float brightness) {
                         return Vec3.ZERO;
@@ -248,6 +255,12 @@ public class RocketNauticsClient {
                 });
         event.register(DimensionTypes.MOON_EFFECTS,
                 new DimensionSpecialEffects(Float.NaN, true, DimensionSpecialEffects.SkyType.NONE, false, false) {
+
+                    @Override
+                    public float @Nullable [] getSunriseColor(float p_108872_, float p_108873_) {
+                        return null;
+                    }
+
                     @Override
                     public Vec3 getBrightnessDependentFogColor(Vec3 fogColor, float brightness) {
                         return Vec3.ZERO;

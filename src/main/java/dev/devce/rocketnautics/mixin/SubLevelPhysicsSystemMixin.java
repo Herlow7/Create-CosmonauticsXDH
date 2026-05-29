@@ -1,14 +1,13 @@
 package dev.devce.rocketnautics.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
-import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
-import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
@@ -27,7 +26,7 @@ public abstract class SubLevelPhysicsSystemMixin {
     // we need this correction to occur immediately before the Rapier engine does a physics tick, so we mixin.
     @Inject(method = "tickPipelinePhysics", at = @At(value = "INVOKE", target = "Ldev/ryanhcode/sable/sublevel/ServerSubLevel;applyQueuedForces(Ldev/ryanhcode/sable/sublevel/system/SubLevelPhysicsSystem;Ldev/ryanhcode/sable/api/physics/handle/RigidBodyHandle;D)V", shift = At.Shift.AFTER))
     private void applyVelocityToOrbit(ServerSubLevelContainer container, CallbackInfo ci, @Local(name = "subLevel") ServerSubLevel subLevel) {
-        if (!DeepSpaceData.isDeepSpace(container.getLevel())) return;
+        if (!DeepSpaceHelper.isDeepSpace(container.getLevel())) return;
         Vector3dc position = subLevel.logicalPose().position();
         if (position == null) {
             return;

@@ -12,28 +12,27 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
-public record DeepSpacePositionPayload(byte[] data) implements CustomPacketPayload {
-    public static final Type<DeepSpacePositionPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(RocketNautics.MODID, "arbitrary"));
-    public static final StreamCodec<FriendlyByteBuf, DeepSpacePositionPayload> CODEC = StreamCodec.of(
-            (buf, payload) -> buf.writeByteArray(payload.data),
-            buf -> new DeepSpacePositionPayload(buf.readByteArray())
-    );
+import java.util.function.Consumer;
 
-    public static DeepSpacePositionPayload of(DeepSpacePosition position, UniverseDefinition universe) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        position.write(buf, universe);
-        byte[] bytes = new byte[buf.readableBytes()];
-        buf.readBytes(bytes);
-        buf.release();
-        return new DeepSpacePositionPayload(bytes);
+public final class DeepSpacePositionPayload extends BufferPayload {
+    public static final Type<DeepSpacePositionPayload> TYPE = new Type<>(RocketNautics.path("deep_space_position"));
+    public static final StreamCodec<FriendlyByteBuf, DeepSpacePositionPayload> CODEC = codec(DeepSpacePositionPayload::new);
+
+    private DeepSpacePositionPayload(FriendlyByteBuf fromStreamCodec) {
+        super(fromStreamCodec);
     }
 
-    @OnlyIn(Dist.CLIENT)
-    public void handle() {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-        buf.writeBytes(data);
+    private DeepSpacePositionPayload(Consumer<FriendlyByteBuf> writer) {
+        super(writer);
+    }
+
+    public static DeepSpacePositionPayload of(DeepSpacePosition position, UniverseDefinition universe) {
+        return new DeepSpacePositionPayload(buf -> position.write(buf, universe));
+    }
+
+    @Override
+    protected void read(FriendlyByteBuf buf) {
         DeepSpaceHandler.receivePosition(buf);
-        buf.release();
     }
 
     @Override
