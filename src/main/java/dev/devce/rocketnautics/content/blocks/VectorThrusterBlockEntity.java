@@ -175,23 +175,6 @@ public class VectorThrusterBlockEntity extends RocketThrusterBlockEntity {
     }
 
     @Override
-    public void writeValue(String key, double value) {
-        if ("throttle".equals(key)) {
-            setActive(value > 0);
-            setThrottle((float) value);
-        } else if ("thrust".equals(key)) {
-            setActive(value > 0);
-            var behavior = getThrustPower();
-            if (behavior != null) {
-                float maxN = behavior.getValue() * 50.0f;
-                setThrottle(maxN > 0 ? (float)(value / maxN) : 0);
-            } else {
-                setThrottle((float) value);
-            }
-        }
-    }
-
-    @Override
     public void writeValues(String key, double... values) {
         if ("gimbal".equals(key) && values.length >= 2) {
             setComputerGimbal((float) values[0], 0.0f, (float) values[1]);

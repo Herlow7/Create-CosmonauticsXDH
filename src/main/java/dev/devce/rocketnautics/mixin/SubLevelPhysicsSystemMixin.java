@@ -32,23 +32,32 @@ public abstract class SubLevelPhysicsSystemMixin {
             return;
         }
         DeepSpaceInstance handling = DeepSpaceData.getInstance(container.getLevel().getServer()).getInstanceForPos((int) position.x(), (int) position.z());
-        if (handling == null) return;
-        Vector3dc center = handling.getCenter();
-        Vector3d offset = position.sub(center, new Vector3d());
         RigidBodyHandle handle = this.getPhysicsHandle(subLevel);
-        Vector3d correction = handle.getLinearVelocity(new Vector3d());
-        if (correction.lengthSquared() <= 1e-10) {
-            // just register our mass, skipping any calculation
-            handling.applyVelocity(subLevel.getUniqueId(), correction.zero(), subLevel.getMassTracker().getMass());
+        Vector3d velocity = handle.getLinearVelocity(new Vector3d());
+        if (handling == null) {
+            // no movement allowed if you're not in an instance.
+            handle.addLinearAndAngularVelocity(velocity.negate(), new Vector3d());
             return;
         }
-        double dot = offset.dot(correction);
-        double radiusFactor = 4d / (handling.getSideLength() * handling.getSideLength());
-        // part 1 of our correction is a damping factor based on the actual velocity and distance to instance edge.
-        // part 2 of our correction is a reduction of the component moving away from the center.
-        correction.mulAdd(Math.min(0.8, offset.lengthSquared() * radiusFactor),
-                offset.mul(Math.max(0, dot * radiusFactor)));
-        handling.applyVelocity(subLevel.getUniqueId(), correction, subLevel.getMassTracker().getMass());
-        handle.addLinearAndAngularVelocity(correction.negate(), offset.zero());
+        // basic idea:
+        // take the ship CoM's distance from the box center and project it outward by the ship BB's diagonal length.
+        // if this projection lands outside the box radius, cancel the component of velocity moving outward, and halve the orthogonal component of velocity.
+        Vector3dc center = handling.getCenter();
+        Vector3d offset = position.sub(center, new Vector3d());
+        if (offset.lengthSquared() <= 1e-20 || (offset.length() + subLevel.boundingBox().size().length()) * 2 <= handling.getSideLength()) {
+            // just register our mass, skipping any calculation
+            handling.applyVelocity(subLevel.getUniqueId(), offset.zero(), subLevel.getMassTracker().getMass());
+            return;
+        }
+        offset.normalize();
+        double dot = offset.dot(velocity);
+        Vector3d aligned = offset.mul(dot, new Vector3d());
+        Vector3d orthogonal = velocity.sub(aligned, new Vector3d());
+        if (dot < 0) {
+            aligned.zero(); // don't cancel velocity moving towards the center
+        }
+        Vector3d cancelledComponent = orthogonal.mulAdd(0.5, aligned);
+        handling.applyVelocity(subLevel.getUniqueId(), cancelledComponent, subLevel.getMassTracker().getMass());
+        handle.addLinearAndAngularVelocity(cancelledComponent.negate(), offset.zero());
     }
 }

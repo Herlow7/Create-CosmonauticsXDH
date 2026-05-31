@@ -104,7 +104,7 @@ public class LegThrustersItem extends BaseArmorItem {
             entity.getPersistentData().remove("VisualBacktankAir");
 
         List<ItemStack> backtanks = BacktankUtil.getAllWithAir(entity);
-        if (backtanks.isEmpty()) {
+        if (backtanks.isEmpty() && !entity.hasInfiniteMaterials()) {
             removeAttribute(entity);
             return;
         }
@@ -114,13 +114,14 @@ public class LegThrustersItem extends BaseArmorItem {
 
         if (!active || entity.hasInfiniteMaterials()) return;
 
-        float visualBacktankAir = 0f;
-        for (ItemStack stack : backtanks)
-            visualBacktankAir += BacktankUtil.getAir(stack);
+        if (level.isClientSide) {
+            float visualBacktankAir = 0f;
+            for (ItemStack stack : backtanks)
+                visualBacktankAir += BacktankUtil.getAir(stack);
 
-        if (level.isClientSide)
             entity.getPersistentData()
                     .putInt("VisualBacktankAir", Math.round(visualBacktankAir));
+        }
 
         boolean inFluid = !entity.isEyeInFluidType(NeoForgeMod.EMPTY_TYPE.value());
         boolean inSpace = !GlobalSpacePhysicsHandler.canBreathe(entity);

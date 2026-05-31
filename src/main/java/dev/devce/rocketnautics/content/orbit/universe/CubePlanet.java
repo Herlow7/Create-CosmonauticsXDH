@@ -4,10 +4,7 @@ import dev.devce.rocketnautics.client.PlanetColors;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.api.orbit.FrameTree;
 import dev.devce.rocketnautics.api.orbit.FrameTreeOwner;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.Level;
 import org.hipparchus.geometry.euclidean.threed.Rotation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,8 +41,9 @@ public record CubePlanet(@NotNull FrameTree frame, double radius, TimeStampedAng
         int id = buf.readVarInt();
         double radius = buf.readDouble();
         TimeStampedAngularCoordinates coords = DeepSpaceHelper.STAMPED_ANGULARCOORDS_CODEC_S.decode(buf);
+        boolean hasLinked = buf.readBoolean();
         PlanetDimensionData linkedDimension = null;
-        if (buf.readBoolean()) {
+        if (hasLinked) {
             linkedDimension = PlanetDimensionData.read(buf);
         }
         PlanetExtras extras = PlanetExtras.CODEC.decode(buf);

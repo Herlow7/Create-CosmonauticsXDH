@@ -186,6 +186,8 @@ public final class DeepSpaceInstance {
                     return;
                 }
                 // ensure we properly retrieve and kick everything inside this instance to the destination dimension
+                // TODO what about players that are logged out?
+                // Track their instance in entity data, on load see if/where that instance exited?
                 SpaceTransitionHandler.exitDeepSpace(server, lastOrbiting, r, lastPosition, a, this,
                         () -> manager.retireInstance(this.getId()));
                 isProcessingRetirement = true;

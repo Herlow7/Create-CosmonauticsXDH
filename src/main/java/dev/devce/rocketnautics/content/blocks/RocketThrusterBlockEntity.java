@@ -741,8 +741,13 @@ public class RocketThrusterBlockEntity extends SmartBlockEntity implements Block
             setThrottle((float) value);
         } else if ("thrust".equals(key)) {
             setActive(value > 0);
-            float maxN = maxThrust.getValue() * 50.0f;
-            setThrottle(maxN > 0 ? (float) (value / maxN) : 0);
+            var behavior = getThrustPower();
+            if (behavior != null) {
+                float maxN = behavior.getValue() * 50.0f;
+                setThrottle(maxN > 0 ? (float)(value / maxN) : 0);
+            } else {
+                setThrottle((float) value);
+            }
         }
     }
 

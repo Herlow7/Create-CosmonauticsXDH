@@ -32,6 +32,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -84,7 +85,7 @@ public class SpaceTransitionHandler {
                     if (linked != null && linked.linkedDimension() != null && linked.linkedDimension().transitionHeight() < pos.y()) {
                         RigidBodyHandle handle = physicsSystem.getPhysicsHandle(ship);
                         double captureSize = ship.boundingBox().size().length();
-                        DeepSpaceInstance claimed = instance.claimNewInstance((int) (captureSize / 16 + 2));
+                        DeepSpaceInstance claimed = instance.claimNewInstance((int) (captureSize / 8 + 2));
                         Quaterniond rotation = initInstance(claimed, ship.logicalPose().position(), handle.getLinearVelocity(new Vector3d()), linked, ship);
                         ServerLevel deepSpace = level.getServer().getLevel(RocketDimensions.DEEP_SPACE);
                         // Handle all players nearby
@@ -253,9 +254,12 @@ public class SpaceTransitionHandler {
         PacketDistributor.sendToPlayer(player, new SeamlessTransitionPayload(false));
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void handleTickTasks(ServerTickEvent.Post event) {
         if (!TICK_TASKS.isEmpty()) {
+            TICK_TASKS.removeFirst().run();
+        }
+        while (event.hasTime() && !TICK_TASKS.isEmpty()) {
             TICK_TASKS.removeFirst().run();
         }
     }

@@ -98,12 +98,13 @@ public class UniverseDefinition {
     public static UniverseDefinition read(FriendlyByteBuf buf) {
         FrameTree tree = FrameTree.readTree(buf);
         int count = buf.readVarInt();
-        List<PointGravitySource> gravity = new ObjectArrayList<>();
+        List<PointGravitySource> gravity = new ObjectArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            gravity.add(PointGravitySource.read(buf, tree));
+            PointGravitySource source = PointGravitySource.read(buf, tree);
+            gravity.add(source);
         }
         count = buf.readVarInt();
-        List<CubePlanet> planets = new ObjectArrayList<>();
+        List<CubePlanet> planets = new ObjectArrayList<>(count);
         for (int i = 0; i < count; i++) {
             CubePlanet planet = CubePlanet.read(buf, tree);
             planets.add(planet);
