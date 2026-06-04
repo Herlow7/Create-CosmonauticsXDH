@@ -304,6 +304,24 @@ public class RocketBlocks {
             .item().build()
             .register();
 
+    public static final BlockEntry<RotatedPillarBlock> LUNAR_ROCK = REGISTRATE.block("lunar_rock", RotatedPillarBlock::new)
+            .initialProperties(() -> Blocks.STONE)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .loot((tables, block) -> tables.add(block, tables.createSingleItemTableWithSilkTouch(block, RocketBlocks.LUNAR_FRAGMENTED_ROCK)))
+            .tag(GENERIC_CARVABLE.tag)
+            .transform(pickaxeOnly())
+            .blockstate((ctx, prov) -> prov.axisBlock(ctx.getEntry()))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<ColoredFallingBlock> LUNAR_FRAGMENTED_ROCK = REGISTRATE.block("lunar_fragmented_rock", p -> new ColoredFallingBlock(new ColorRGBA(-8356741), p))
+            .initialProperties(() -> Blocks.GRAVEL)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .tag(GENERIC_CARVABLE.tag)
+            .transform(pickaxeOnly())
+            .item().build()
+            .register();
+
     public static final BlockEntry<MossBlock> LUNAR_MOSS_STIFF = REGISTRATE.block("lunar_moss_stiff", MossBlock::new)
             .initialProperties(() -> Blocks.DEAD_BRAIN_CORAL)
             .transform(pickaxeOnly())

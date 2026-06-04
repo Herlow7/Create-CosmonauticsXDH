@@ -1,6 +1,7 @@
 package dev.devce.rocketnautics.data.worldgen.noise;
 
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.content.world.NoiseThreshold3dConditionSource;
 import dev.devce.rocketnautics.data.worldgen.RocketBiomes;
 import dev.devce.rocketnautics.registry.RocketBlocks;
 import net.minecraft.core.Direction;
@@ -24,7 +25,7 @@ public class RocketNoiseGenSettings {
         HolderGetter<NormalNoise.NoiseParameters> noises = context.lookup(Registries.NOISE);
         context.register(MOON_GENERATOR, new NoiseGeneratorSettings(
                 NoiseSettings.create(-64, 384, 1, 2),
-                RocketBlocks.LUNAR_AGED_BASALT.getDefaultState(),
+                RocketBlocks.LUNAR_ROCK.getDefaultState(),
                 Blocks.MAGMA_BLOCK.defaultBlockState(),
                 RocketNoiseRouterData.moon(noises, densities),
                 SurfaceRules.sequence(
@@ -36,15 +37,14 @@ public class RocketNoiseGenSettings {
                                                 SurfaceRules.hole(),
                                                 SurfaceRules.sequence(
                                                         SurfaceRules.ifTrue(
-                                                                SurfaceRules.stoneDepthCheck(-1, false, 2, CaveSurface.FLOOR),
+                                                                SurfaceRules.stoneDepthCheck(0, false, 0, CaveSurface.FLOOR),
                                                                 SurfaceRules.state(Blocks.AIR.defaultBlockState())
-                                                        ),
-                                                        SurfaceRules.ifTrue(
-                                                                SurfaceRules.isBiome(RocketBiomes.LUNAR_MARIA),
+                                                        ),SurfaceRules.ifTrue(
+                                                                SurfaceRules.not(SurfaceRules.stoneDepthCheck(1, false, 5, CaveSurface.FLOOR)),
                                                                 SurfaceRules.ifTrue(
-                                                                        SurfaceRules.not(SurfaceRules.stoneDepthCheck(1, false, 5, CaveSurface.FLOOR)),
+                                                                        SurfaceRules.noiseCondition(RocketNoiseData.MOON_JAGGEDNESS, -0.5, 0.5),
                                                                         SurfaceRules.ifTrue(
-                                                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_JAGGEDNESS, -0.5, 0.5),
+                                                                                new NoiseThreshold3dConditionSource(RocketNoiseData.MOON_JAGGEDNESS, -0.5, 0.5),
                                                                                 SurfaceRules.state(Blocks.LAVA.defaultBlockState())
                                                                         )
                                                                 )
@@ -57,10 +57,14 @@ public class RocketNoiseGenSettings {
                                                 SurfaceRules.state(Blocks.BASALT.defaultBlockState())
                                         ),
                                         SurfaceRules.ifTrue(
-                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_EROSION, 0, 2),
+                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_EROSION, 0.6, 2),
                                                 SurfaceRules.state(Blocks.BASALT.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X))
                                         ),
-                                        SurfaceRules.state(Blocks.BASALT.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z))
+                                        SurfaceRules.ifTrue(
+                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_EROSION, -2, -0.6),
+                                                SurfaceRules.state(Blocks.BASALT.defaultBlockState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z))
+                                        ),
+                                        SurfaceRules.state(Blocks.SMOOTH_BASALT.defaultBlockState())
                                 )
                         ),
                         SurfaceRules.ifTrue(
@@ -90,31 +94,23 @@ public class RocketNoiseGenSettings {
                                 SurfaceRules.isBiome(RocketBiomes.LUNAR_MEGAREGOLITH),
                                 SurfaceRules.sequence(
                                         SurfaceRules.ifTrue(
-                                                SurfaceRules.steep(),
-                                                SurfaceRules.state(RocketBlocks.LUNAR_AGED_BASALT.getDefaultState())
-                                        ),
-                                        SurfaceRules.ifTrue(
-                                                SurfaceRules.stoneDepthCheck(0, true, 0, CaveSurface.FLOOR),
+                                                SurfaceRules.stoneDepthCheck(-2, false, 5, CaveSurface.FLOOR),
                                                 SurfaceRules.sequence(
                                                         SurfaceRules.ifTrue(
-                                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_JAGGEDNESS, 0.6, 2),
-                                                                SurfaceRules.state(RocketBlocks.LUNAR_LOOSE_REGOLITH.getDefaultState())
-                                                        ),
-                                                        SurfaceRules.ifTrue(
-                                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_JAGGEDNESS, -2, -0.6),
-                                                                SurfaceRules.state(RocketBlocks.LUNAR_REGOLITH.getDefaultState())
+                                                                new NoiseThreshold3dConditionSource(RocketNoiseData.MOON_JAGGEDNESS, -0.3, 0.3),
+                                                                SurfaceRules.state(RocketBlocks.LUNAR_FRAGMENTED_ROCK.getDefaultState())
                                                         )
                                                 )
                                         ),
                                         SurfaceRules.ifTrue(
-                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_JAGGEDNESS, 0.4, 2),
-                                                SurfaceRules.state(RocketBlocks.LUNAR_AGED_BASALT.getDefaultState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X))
+                                                new NoiseThreshold3dConditionSource(RocketNoiseData.MOON_JAGGEDNESS, 0.6, 2),
+                                                SurfaceRules.state(RocketBlocks.LUNAR_ROCK.getDefaultState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.X))
                                         ),
                                         SurfaceRules.ifTrue(
-                                                SurfaceRules.noiseCondition(RocketNoiseData.MOON_JAGGEDNESS, -2, -0.4),
-                                                SurfaceRules.state(RocketBlocks.LUNAR_AGED_BASALT.getDefaultState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z))
+                                                new NoiseThreshold3dConditionSource(RocketNoiseData.MOON_JAGGEDNESS, -2, -0.6),
+                                                SurfaceRules.state(RocketBlocks.LUNAR_ROCK.getDefaultState().setValue(RotatedPillarBlock.AXIS, Direction.Axis.Z))
                                         ),
-                                        SurfaceRules.state(RocketBlocks.LUNAR_AGED_BASALT.getDefaultState())
+                                        SurfaceRules.state(RocketBlocks.LUNAR_ROCK.getDefaultState())
                                 )
                         )
                 ),

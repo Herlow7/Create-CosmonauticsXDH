@@ -34,6 +34,11 @@ public class RocketMixingRecipeGen extends MixingRecipeGen {
             .output(AllItems.CINDER_FLOUR)
             .requiresHeat(HeatCondition.HEATED));
 
+    GeneratedRecipe LUNAR_ROCK = create("lunar_rock", b -> b
+            .require(LUNAR_FRAGMENTED_ROCK)
+            .output(RocketBlocks.LUNAR_ROCK)
+            .requiresHeat(HeatCondition.HEATED));
+
     public RocketMixingRecipeGen(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
         super(output, registries, RocketNautics.MODID);
     }
