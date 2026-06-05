@@ -518,8 +518,8 @@
                         "type": "minecraft:condition",
                         "if_true": {
                           "type": "rocketnautics:noise_condition_3d",
-                          "max_threshold": 0.7,
-                          "min_threshold": -0.7,
+                          "max_threshold": 0.5,
+                          "min_threshold": -0.5,
                           "noise": "rocketnautics:moon/jaggedness"
                         },
                         "then_run": {
