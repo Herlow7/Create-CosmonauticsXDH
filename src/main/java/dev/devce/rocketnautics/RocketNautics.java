@@ -67,6 +67,7 @@ public class RocketNautics {
         modContainer.registerConfig(ModConfig.Type.CLIENT, (net.neoforged.fml.config.IConfigSpec) RocketConfig.CLIENT_SPEC);
 
         RocketDensityFunctions.register(modEventBus);
+        RocketSurfaceRules.register(modEventBus);
         RocketFloatProviders.register(modEventBus);
         RocketWorldCarvers.register(modEventBus);
         RocketFeatures.register(modEventBus);

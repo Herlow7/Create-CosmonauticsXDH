@@ -125,6 +125,16 @@ public class RocketBlocks {
             .tag(RocketTags.BlockTags.HALF_VOLUME.tag, RocketTags.BlockTags.HEAVY.tag)
             .item(RocketBlockItem::new)
             .transform(RocketItems.noGeneratedModel())
+            .recipe((ctx, prov) -> ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
+                    .pattern("   ")
+                    .pattern("AGA")
+                    .pattern("IBI")
+                    .define('A', Items.AMETHYST_SHARD)
+                    .define('G', Items.GLASS)
+                    .define('I', Items.IRON_INGOT)
+                    .define('B', RocketBlocks.TITANIUM_BLOCK)
+                    .unlockedBy("has_iron_block", prov.has(RocketBlocks.TITANIUM_BLOCK))
+                    .save(prov))
             .build()
             .register();
 
@@ -291,6 +301,24 @@ public class RocketBlocks {
             .tag(GENERIC_CARVABLE.tag)
             .blockstate((ctx, prov) -> prov.axisBlock(ctx.getEntry()))
             .tag(RocketTags.BlockTags.HEAVY.tag)
+            .item().build()
+            .register();
+
+    public static final BlockEntry<RotatedPillarBlock> LUNAR_ROCK = REGISTRATE.block("lunar_rock", RotatedPillarBlock::new)
+            .initialProperties(() -> Blocks.STONE)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .loot((tables, block) -> tables.add(block, tables.createSingleItemTableWithSilkTouch(block, RocketBlocks.LUNAR_FRAGMENTED_ROCK)))
+            .tag(GENERIC_CARVABLE.tag)
+            .transform(pickaxeOnly())
+            .blockstate((ctx, prov) -> prov.axisBlock(ctx.getEntry()))
+            .item().build()
+            .register();
+
+    public static final BlockEntry<ColoredFallingBlock> LUNAR_FRAGMENTED_ROCK = REGISTRATE.block("lunar_fragmented_rock", p -> new ColoredFallingBlock(new ColorRGBA(-8356741), p))
+            .initialProperties(() -> Blocks.GRAVEL)
+            .properties(p -> p.mapColor(MapColor.STONE))
+            .tag(GENERIC_CARVABLE.tag)
+            .transform(pickaxeOnly())
             .item().build()
             .register();
 

@@ -1,0 +1,14 @@
+{
+  "type": "create:mixing",
+  "heat_requirement": "heated",
+  "ingredients": [
+    {
+      "item": "rocketnautics:lunar_fragmented_rock"
+    }
+  ],
+  "results": [
+    {
+      "id": "rocketnautics:lunar_rock"
+    }
+  ]
+}

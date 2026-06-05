@@ -30,6 +30,12 @@
   "radius": 750000.0,
   "rotation": {
     "type": "tidal_lock",
-    "rotations_per_orbit": 1.0
+    "rotations_per_orbit": 1.0,
+    "starting_rotation": {
+      "q0": 0.7071067811865476,
+      "q1": 0.0,
+      "q2": -0.7071067811865475,
+      "q3": 0.0
+    }
   }
 }

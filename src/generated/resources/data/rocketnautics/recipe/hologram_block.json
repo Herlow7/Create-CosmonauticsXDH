@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "B": {
+      "item": "rocketnautics:titanium_block"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "pattern": [
+    "   ",
+    "AGA",
+    "IBI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:hologram_block"
+  }
+}

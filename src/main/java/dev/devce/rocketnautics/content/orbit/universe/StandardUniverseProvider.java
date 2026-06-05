@@ -5,6 +5,7 @@ import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.universe.builder.PlanetDefinitionBuilder;
 import dev.devce.rocketnautics.content.orbit.universe.builder.UniverseDefinitionBuilder;
 import net.minecraft.world.level.Level;
+import org.hipparchus.geometry.euclidean.threed.Rotation;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 
 public final class StandardUniverseProvider {
@@ -71,7 +72,7 @@ public final class StandardUniverseProvider {
                 .setDimensionTransferHeight(20000)
                 .setCircularOrbit(lunarMonthInOverworldDays * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRadius(overworldRadius / 4)
-                .setTidalLocked()
+                .setTidalLocked(new Rotation(Vector3D.PLUS_K, Vector3D.PLUS_I))
                 .setPriority(0);
     }
 
