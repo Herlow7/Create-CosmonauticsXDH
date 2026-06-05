@@ -158,7 +158,7 @@ public final class DeepSpaceInstance {
                 lastOrbiting = null;
             }
         }
-        if (lastOrbiting != null && lastOrbiting.linkedDimension() != null) {
+        if (lastOrbiting != null && lastOrbiting.linkedDimension() != null && lastOrbiting.linkedDimension().allowedTransfer().allowToDimension()) {
             // rotate the frame to view the planet aligned with the cardinal axes
             Vector3D p = lastOrbiting.getRotationAtTime(position.getLocalUniverseTime())
                     .applyInverseTo(getPosition().getCurrentPosition());

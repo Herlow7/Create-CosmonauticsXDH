@@ -3,8 +3,8 @@ package dev.devce.rocketnautics.content.orbit;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.RocketDimensions;
-import dev.devce.rocketnautics.content.orbit.universe.StandardUniverseProvider;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
+import dev.devce.rocketnautics.content.orbit.universe.UniverseLoader;
 import dev.devce.rocketnautics.network.UniverseDefinitionPayload;
 import dev.devce.rocketnautics.network.UniverseTimeSyncPayload;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -61,7 +61,7 @@ public class DeepSpaceData extends SavedData {
 
     // end static //
 
-    private final UniverseDefinition universe = StandardUniverseProvider.createSolarSystem().build();
+    private final UniverseDefinition universe = UniverseLoader.INSTANCE.getLoaded();
 
     private final Int2ObjectMap<InstanceList> instances = new Int2ObjectOpenHashMap<>();
 

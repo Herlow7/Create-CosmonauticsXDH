@@ -9,7 +9,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
-import java.util.function.UnaryOperator;
 
 public class UniverseDefinitionBuilder {
     private final FrameTree tree = new FrameTree();
@@ -36,7 +35,7 @@ public class UniverseDefinitionBuilder {
 
     public PointGravitySource getGravitySource(FrameTree frame, boolean remove) {
         if (frame == null || !sources.containsKey(frame)) {
-            throw new IllegalArgumentException("Gravity source could not be found!");
+            return null;
         }
         if (remove) return sources.remove(frame);
         return sources.get(frame);
@@ -53,7 +52,7 @@ public class UniverseDefinitionBuilder {
 
     public CubePlanet getCubePlanet(FrameTree frame, boolean remove) {
         if (frame == null || !sources.containsKey(frame)) {
-            throw new IllegalArgumentException("Planet could not be found!");
+            return null;
         }
         if (remove) return planets.remove(frame);
         return planets.get(frame);
@@ -68,12 +67,12 @@ public class UniverseDefinitionBuilder {
         return this;
     }
 
-    public UniverseDefinitionBuilder cubePlanet(UnaryOperator<PlanetDefinitionBuilder> op) {
-        op.apply(new PlanetDefinitionBuilder(this)).build();
+    public UniverseDefinitionBuilder cubePlanet(PlanetDefinitionBuilder builder) {
+        builder.build(this);
         return this;
     }
 
-    public CubePlanet cubePlanetAndGet(UnaryOperator<PlanetDefinitionBuilder> op) {
-        return op.apply(new PlanetDefinitionBuilder(this)).build();
+    public CubePlanet cubePlanetAndGet(PlanetDefinitionBuilder builder) {
+        return builder.build(this);
     }
 }

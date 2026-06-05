@@ -1,30 +1,24 @@
 package dev.devce.rocketnautics.network;
 
+import com.mojang.datafixers.util.Either;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.client.DeepSpaceHandler;
-import dev.devce.rocketnautics.client.PlanetColors;
 import dev.devce.rocketnautics.client.SkyHandler;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.items.LegThrustersItem;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BiomeTags;
-import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.BiomeSource;
-import net.minecraft.world.level.biome.Climate;
-import dev.devce.rocketnautics.network.SputnikNodeSyncPayload;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.concurrent.CompletableFuture;
-import net.neoforged.fml.common.EventBusSubscriber.Bus;
 
 public class NetworkHandler {
 
@@ -189,11 +183,13 @@ public class NetworkHandler {
                 CubePlanet planet = def.getPlanetById(id);
                 // computing the render data may take time, so we dispatch in separate packets.
                 // would it be better to send a single large packet after loading everything?
-                byte[] send;
+                Either<byte[], ResourceLocation> send;
                 if (planet == null) {
-                    send = PlanetColors.BLANK;
+                    send = Either.right(ResourceLocation.withDefaultNamespace("missingno"));
+                } else if (planet.textureOverride() != null) {
+                    send = Either.right(planet.textureOverride());
                 } else {
-                    send = planet.getRenderData(powerSize);
+                    send = Either.left(planet.getRenderData(level.getServer(), powerSize));
                 }
                 PlanetRenderPayload payload = new PlanetRenderPayload(id, send, powerSize);
                 level.getServer().execute(() -> PacketDistributor.sendToPlayer(player, payload));
@@ -202,7 +198,7 @@ public class NetworkHandler {
     }
 
     @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
-    private static void handlePlanetRenderData(int id, byte[] renderData, int powerSize) {
+    private static void handlePlanetRenderData(int id, Either<byte[], ResourceLocation> renderData, int powerSize) {
         DeepSpaceHandler.receiveRenderData(id, renderData, powerSize);
     }
 

@@ -334,7 +334,7 @@ public class DeepSpaceHelper {
     }
 
     private static Optional<Vector3D> computeSkyPos(UniverseDefinition universe, AbsoluteDate date, CubePlanet planet) {
-        return universe.getFrameByID(planet.linkedDimension().controlDimensionDayTimeID()).map(sourceFrame -> {
+        return universe.getFrameByID(planet.linkedDimension().dimensionDayTimeControllerID()).map(sourceFrame -> {
             try {
                 return sourceFrame.getStaticTransformTo(planet.orekitFrame(), date).transformPosition(Vector3D.ZERO);
             } catch (Exception e) {

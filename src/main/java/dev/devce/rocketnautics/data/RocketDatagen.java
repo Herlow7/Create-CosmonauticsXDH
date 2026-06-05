@@ -24,6 +24,8 @@ public class RocketDatagen {
         PackOutput output = gen.getPackOutput();
         CompletableFuture<HolderLookup.Provider> registries = event.getLookupProvider();
 
+        event.addProvider(new RocketUniverseProvider(output, registries));
+
         event.addProvider(new RocketCrushingRecipeGen(output, registries));
         event.addProvider(new RocketMechanicalCraftingRecipeGen(output, registries));
         event.addProvider(new RocketMillingRecipeGen(output, registries));

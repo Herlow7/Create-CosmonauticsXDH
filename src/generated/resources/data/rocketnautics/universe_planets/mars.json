@@ -1,0 +1,34 @@
+{
+  "parent": "sol",
+  "acceleration_at_surface": 3.7,
+  "name": "mars",
+  "planet_extras": {
+    "light_source_name": "sol"
+  },
+  "position": {
+    "type": "circular_orbit_period",
+    "coordinate_date": {
+      "atto": 0,
+      "sec": 0
+    },
+    "orbit_axis": {
+      "x": 0.0,
+      "y": 1.0,
+      "z": 0.0
+    },
+    "period_seconds": 1136400.0
+  },
+  "priority": 0,
+  "radius": 1590000.0,
+  "rotation": {
+    "type": "period",
+    "period_seconds": 1230.0,
+    "rotation_axis": {
+      "x": 0.0,
+      "y": -1.0,
+      "z": 0.0
+    }
+  },
+  "texture_override": "rocketnautics:textures/planet/mars.png",
+  "use_texture_override": true
+}

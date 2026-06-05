@@ -1,0 +1,29 @@
+{
+  "parent": "root",
+  "mu": 6.907424484959378E18,
+  "name": "sol",
+  "planet_extras": {
+    "is_star": true
+  },
+  "position": {
+    "type": "fixed",
+    "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    }
+  },
+  "priority": 0,
+  "radius": 3.0E8,
+  "rotation": {
+    "type": "period",
+    "period_seconds": 38400.0,
+    "rotation_axis": {
+      "x": 0.0,
+      "y": 1.0,
+      "z": 0.0
+    }
+  },
+  "texture_override": "rocketnautics:textures/planet/sol.png",
+  "use_texture_override": true
+}

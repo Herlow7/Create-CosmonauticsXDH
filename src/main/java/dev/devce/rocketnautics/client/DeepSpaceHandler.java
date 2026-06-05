@@ -3,6 +3,7 @@ package dev.devce.rocketnautics.client;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
+import com.mojang.datafixers.util.Either;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
@@ -22,6 +23,7 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -51,7 +53,7 @@ import java.util.stream.Stream;
 public final class DeepSpaceHandler {
 
     private static @Nullable UniverseDefinition UNIVERSE;
-    private static final Int2ObjectAVLTreeMap<IntObjectPair<DeepSpaceTexture>> KNOWN_RENDER_DATA = new Int2ObjectAVLTreeMap<>();
+    private static final Int2ObjectAVLTreeMap<IntObjectPair<PreparedTexture>> KNOWN_RENDER_DATA = new Int2ObjectAVLTreeMap<>();
     
     private static long receivedUniverseDateTick = -1;
     private static AbsoluteDate receivedUniverseDate;
@@ -191,8 +193,11 @@ public final class DeepSpaceHandler {
         };
     }
 
-    public static void receiveRenderData(int id, byte[] data, int powerScale) {
-        KNOWN_RENDER_DATA.put(id, IntObjectPair.of(powerScale, DeepSpaceTexture.construct(id, data)));
+    public static void receiveRenderData(int id, Either<byte[], ResourceLocation> data, int powerScale) {
+        KNOWN_RENDER_DATA.put(id, IntObjectPair.of(powerScale, data.<PreparedTexture>map(arr -> DeepSpaceTexture.construct(id, arr), res -> {
+            Minecraft.getInstance().getTextureManager().register(res, new SimpleTexture(res));
+            return () -> res;
+        })));
     }
 
     @SubscribeEvent
@@ -243,7 +248,7 @@ public final class DeepSpaceHandler {
     private static boolean renderPlanet(CubePlanet planet, Vector3D ourPosInPlanetFrame, PoseStack poseStack, AbsoluteDate date, float celestialAngle, float partialTicks) {
         assert UNIVERSE != null;
         Minecraft mc = Minecraft.getInstance();
-        IntObjectPair<DeepSpaceTexture> render = KNOWN_RENDER_DATA.get(planet.id());
+        IntObjectPair<PreparedTexture> render = KNOWN_RENDER_DATA.get(planet.id());
         if (render == null || render.leftInt() != SkyHandler.getMaximumScale() || render.right() == null) {
             return true;
         }
@@ -548,7 +553,7 @@ public final class DeepSpaceHandler {
     }
 
     public static boolean renderHoloPlanet(CubePlanet planet, Vector3D ourPosInPlanetFrame, PoseStack poseStack, AbsoluteDate date, double holoScale, MultiBufferSource source, float r, float g, float b, float a) {
-        IntObjectPair<DeepSpaceTexture> render = KNOWN_RENDER_DATA.get(planet.id());
+        IntObjectPair<PreparedTexture> render = KNOWN_RENDER_DATA.get(planet.id());
         if (render == null || render.leftInt() != SkyHandler.getMaximumScale() || render.right() == null) {
             return true;
         }

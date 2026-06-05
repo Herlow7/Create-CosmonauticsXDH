@@ -1,25 +1,30 @@
 package dev.devce.rocketnautics.content.orbit.universe;
 
-import dev.devce.rocketnautics.client.PlanetColors;
+import dev.devce.rocketnautics.SkyDataHandler;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.api.orbit.FrameTree;
 import dev.devce.rocketnautics.api.orbit.FrameTreeOwner;
+import dev.devce.rocketnautics.client.PlanetColors;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import org.hipparchus.geometry.euclidean.threed.Rotation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.utils.TimeStampedAngularCoordinates;
 
-import java.util.function.IntFunction;
-
 // note -- render data supplier is never synced to client
 public record CubePlanet(@NotNull FrameTree frame, double radius, TimeStampedAngularCoordinates rotationDescription,
-                         @Nullable PlanetDimensionData linkedDimension, @Nullable IntFunction<byte[]> renderDataSupplier, @NotNull PlanetExtras extras) implements FrameTreeOwner {
+                         @Nullable PlanetDimensionData linkedDimension, @Nullable ResourceLocation textureOverride,
+                         @NotNull PlanetExtras extras) implements FrameTreeOwner {
 
-    public byte[] getRenderData(int powerScaleClamp) {
-        if (renderDataSupplier == null) return PlanetColors.BLANK;
-        return renderDataSupplier.apply(powerScaleClamp);
+    public byte[] getRenderData(MinecraftServer server, int powerScaleClamp) {
+        if (linkedDimension == null) return PlanetColors.BLANK;
+        ServerLevel level = server.getLevel(linkedDimension.key());
+        if (level == null) return PlanetColors.BLANK;
+        return SkyDataHandler.getHandlerForLevel(level).getRenderDataForDeepSpace(powerScaleClamp);
     }
 
     public Rotation getRotationAtTime(AbsoluteDate date) {

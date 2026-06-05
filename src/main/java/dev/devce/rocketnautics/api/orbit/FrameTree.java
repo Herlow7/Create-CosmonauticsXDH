@@ -122,6 +122,15 @@ public final class FrameTree {
         return root;
     }
 
+    public @NotNull FrameTree getParentSafe() {
+        if (parent == null) return this;
+        return parent;
+    }
+
+    public @Nullable FrameTree getParent() {
+        return parent;
+    }
+
     @NotNull
     public Optional<FrameTree> getInTreeByName(String name) {
         if (retired) return Optional.empty();
@@ -166,6 +175,7 @@ public final class FrameTree {
     }
 
     public String getName() {
+        if (parent == null) return "root";
         return orekitFrame.getName();
     }
 

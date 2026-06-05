@@ -10,18 +10,14 @@ import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.mixin.DistanceManagerAccessor;
-import dev.devce.rocketnautics.network.DebugLogPayload;
 import dev.devce.rocketnautics.network.SeamlessTransitionPayload;
 import dev.egg.SubLevelWarper;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
-import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.platform.SableEventPlatform;
-import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
-
-import java.util.*;
-
+import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunkMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -35,8 +31,8 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.hipparchus.geometry.euclidean.threed.Rotation;
@@ -45,6 +41,8 @@ import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.NotNull;
 import org.joml.*;
 import org.orekit.time.AbsoluteDate;
+
+import java.util.*;
 
 /**
  * Handles the seamless transition of ships and players between dimensions (Overworld <-> Space).
@@ -82,7 +80,7 @@ public class SpaceTransitionHandler {
                     Vector3d pos = ship.logicalPose().position();
                     DeepSpaceData instance = DeepSpaceData.getInstance(level.getServer());
                     CubePlanet linked = instance.getUniverse().getPlanetByDimension(level.dimension());
-                    if (linked != null && linked.linkedDimension() != null && linked.linkedDimension().transitionHeight() < pos.y()) {
+                    if (linked != null && linked.linkedDimension() != null && linked.linkedDimension().allowedTransfer().allowToSpace() && linked.linkedDimension().transitionHeight() < pos.y()) {
                         RigidBodyHandle handle = physicsSystem.getPhysicsHandle(ship);
                         double captureSize = ship.boundingBox().size().length();
                         DeepSpaceInstance claimed = instance.claimNewInstance((int) (captureSize / 8 + 2));

@@ -1,0 +1,38 @@
+{
+  "parent": "sol",
+  "acceleration_at_surface": 11.0,
+  "dimension_data": {
+    "allowed_transfer": "all",
+    "dimension_transfer_height": 20000,
+    "linked_dimension": "minecraft:overworld"
+  },
+  "name": "overworld",
+  "planet_extras": {
+    "has_clouds": true,
+    "light_source_name": "sol"
+  },
+  "position": {
+    "type": "circular_orbit_period",
+    "coordinate_date": {
+      "atto": 0,
+      "sec": 0
+    },
+    "orbit_axis": {
+      "x": 0.0,
+      "y": 1.0,
+      "z": 0.0
+    },
+    "period_seconds": 604800.0
+  },
+  "priority": 0,
+  "radius": 3000000.0,
+  "rotation": {
+    "type": "period",
+    "period_seconds": 1200.0,
+    "rotation_axis": {
+      "x": 0.0,
+      "y": -1.0,
+      "z": 0.0
+    }
+  }
+}

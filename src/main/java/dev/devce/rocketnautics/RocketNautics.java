@@ -11,6 +11,7 @@ import dev.devce.rocketnautics.content.commands.GravityCommand;
 import dev.devce.rocketnautics.content.commands.JetpackCommand;
 import dev.devce.rocketnautics.content.commands.ShipCopyPasteCommand;
 import dev.devce.rocketnautics.content.commands.TimescaleCommand;
+import dev.devce.rocketnautics.content.orbit.universe.UniverseLoader;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.data.RocketDatagen;
 import dev.devce.rocketnautics.network.NetworkHandler;
@@ -31,6 +32,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
@@ -146,6 +148,11 @@ public class RocketNautics {
         dev.devce.rocketnautics.content.commands.AsteroidCommand.register(event.getDispatcher());
         dev.devce.rocketnautics.content.commands.BreakBarrierCommand.register(event.getDispatcher());
         TimescaleCommand.register(event.getDispatcher());
+    }
+
+    @SubscribeEvent
+    public void registerReloadListeners(AddReloadListenerEvent event) {
+        event.addListener(UniverseLoader.INSTANCE);
     }
 
     @SubscribeEvent
