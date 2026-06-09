@@ -12,6 +12,7 @@ import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import dev.devce.rocketnautics.mixin.GameRendererAccessor;
 import dev.ryanhcode.sable.Sable;
+import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import dev.ryanhcode.sable.sublevel.ClientSubLevel;
 import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.client.Camera;
@@ -27,6 +28,7 @@ import net.neoforged.api.distmarker.OnlyIn;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.jspecify.annotations.NonNull;
 import org.orekit.frames.Frame;
 import org.orekit.orbits.Orbit;
@@ -57,17 +59,22 @@ public class HologramTableRenderer extends SafeBlockEntityRenderer<HologramTable
             position = DeepSpaceHandler.getReceivedPosition();
             renderDate = DeepSpaceHandler.getRenderDate(partialTicks);
         } else {
-            renderDate = DeepSpaceHelper.getDateByTicks(renderTicks).shiftedBy(partialTicks / 20);
+            renderDate = DeepSpaceHandler.getPredictedUniverseDate(partialTicks);
+            if (renderDate == null) {
+                renderDate = DeepSpaceHelper.EPOCH;
+            }
         }
         Frame centerFrame;
+        Vector3D posInFrame;
         if (position != null) {
             centerFrame = position.getFrame();
+            posInFrame = position.getPosition(renderDate);
         } else {
             CubePlanet inhabiting = universe.getPlanetByDimension(be.getLevel().dimension());
             if (inhabiting == null) return;
             centerFrame = inhabiting.orekitFrame();
+            posInFrame = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(JOMLConversion.atCenterOf(be.getBlockPos(), new Vector3d()), null, inhabiting, renderDate).first().getPosition();
         }
-        Vector3D posInFrame = position != null ? position.getPosition(renderDate) : Vector3D.ZERO;
         ms.pushPose();
         ms.translate(0.5, holoSize / 2d + 1, 0.5);
         ms.pushPose();
@@ -81,11 +88,11 @@ public class HologramTableRenderer extends SafeBlockEntityRenderer<HologramTable
         // finish hologram rendering
         Pair<Frame, List<CubePlanet>> pair = DeepSpaceHandler.renderHologram(posInFrame, centerFrame, universe, renderDate, holoScale / holoSize, holoScale / 2, ms, bufferSource);
         Frame largestFrame = pair.left();
+        double fov = ((GameRendererAccessor)minecraft.gameRenderer).rocketnautics$getFov(camera, partialTicks, true);
+        float s = (float) (0.01 * Math.sqrt(holoSize) * Math.tan(Math.toRadians(fov) / 2));
+        DebugRenderer.renderFilledBox(ms, bufferSource, -s, -s, -s, s, s, s, 0.0f, 1.0f, 0.8f, 0.8f);
         if (position != null) {
             int steps = RocketConfig.CLIENT.orbitPredictionSteps.getAsInt();
-            double fov = ((GameRendererAccessor)minecraft.gameRenderer).rocketnautics$getFov(camera, partialTicks, true);
-            float s = (float) (0.01 * Math.sqrt(holoSize) * Math.tan(Math.toRadians(fov) / 2));
-            DebugRenderer.renderFilledBox(ms, bufferSource, -s, -s, -s, s, s, s, 0.0f, 1.0f, 0.8f, 0.8f);
             renderVelocityVector(position.getCurrentOrbit().getPVCoordinates(renderDate, largestFrame).getVelocity(), bufferSource, ms, camera);
 //            ms.pushPose();
 //            ms.translate(camera.getPosition().x, camera.getPosition().y, camera.getPosition().z);

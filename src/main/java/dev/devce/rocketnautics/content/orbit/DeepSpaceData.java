@@ -178,22 +178,26 @@ public class DeepSpaceData extends SavedData {
     // TODO mixin to CollisionGetter#borderCollision and Entity#collectColliders to add this
     // collision box at the same place the world border's collision box is added.
     public static VoxelShape getColliderForPosition(Vec3 position) {
+        // subtract the instance bounds from the infinity box
+        return Shapes.join(
+                Shapes.INFINITY,
+                getBoxForPosition(position),
+                BooleanOp.ONLY_FIRST
+        );
+    }
+
+    public static VoxelShape getBoxForPosition(Vec3 position) {
         // compute the instance we are in
         int[] sizeAndId = getChunkPowerSizeIdWithinSizeForParameters((int) position.x, (int) position.z);
         ChunkPos corner = getMinCornerForParameters(sizeAndId[0], sizeAndId[1]);
         int blockSize = 16 * (2 << sizeAndId[0]);
-        // subtract the instance bounds from the infinity box
-        return Shapes.join(
-                Shapes.INFINITY,
-                Shapes.box(
-                        corner.getMinBlockX(),
-                        LOGICAL_INSTANCE_HEIGHT,
-                        corner.getMinBlockZ(),
-                        corner.getMinBlockX() + blockSize + 1,
-                        LOGICAL_INSTANCE_HEIGHT + blockSize + 1,
-                        corner.getMinBlockZ() + blockSize + 1
-                ),
-                BooleanOp.ONLY_FIRST
+        return Shapes.box(
+                corner.getMinBlockX(),
+                LOGICAL_INSTANCE_HEIGHT,
+                corner.getMinBlockZ(),
+                corner.getMinBlockX() + blockSize + 1,
+                LOGICAL_INSTANCE_HEIGHT + blockSize + 1,
+                corner.getMinBlockZ() + blockSize + 1
         );
     }
 
