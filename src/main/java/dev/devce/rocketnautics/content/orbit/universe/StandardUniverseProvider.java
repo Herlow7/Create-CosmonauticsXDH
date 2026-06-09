@@ -72,7 +72,7 @@ public final class StandardUniverseProvider {
                 .setDimensionTransferHeight(20000)
                 .setCircularOrbit(lunarMonthInOverworldDays * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRadius(overworldRadius / 4)
-                .setTidalLocked(new Rotation(Vector3D.PLUS_K, Vector3D.PLUS_I))
+                .setTidalLocked()
                 .setPriority(0);
     }
 

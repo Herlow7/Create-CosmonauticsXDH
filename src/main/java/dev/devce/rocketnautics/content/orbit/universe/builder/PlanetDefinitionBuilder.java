@@ -315,12 +315,12 @@ public class PlanetDefinitionBuilder {
     }
 
     public PlanetDefinitionBuilder setTidalLocked() {
-        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(1));
+        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(-1));
         return this;
     }
 
     public PlanetDefinitionBuilder setTidalLocked(Rotation correction) {
-        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(1, null, correction));
+        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(-1, null, correction));
         return this;
     }
 

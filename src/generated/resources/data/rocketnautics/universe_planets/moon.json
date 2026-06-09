@@ -15,10 +15,6 @@
   },
   "position": {
     "type": "circular_orbit_period",
-    "coordinate_date": {
-      "atto": 0,
-      "sec": 0
-    },
     "orbit_axis": {
       "x": 0.0,
       "y": 1.0,
@@ -30,12 +26,6 @@
   "radius": 750000.0,
   "rotation": {
     "type": "tidal_lock",
-    "rotations_per_orbit": 1.0,
-    "starting_rotation": {
-      "q0": 0.7071067811865476,
-      "q1": 0.0,
-      "q2": -0.7071067811865475,
-      "q3": 0.0
-    }
+    "rotations_per_orbit": -1.0
   }
 }
