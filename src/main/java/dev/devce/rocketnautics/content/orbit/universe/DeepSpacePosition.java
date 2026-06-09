@@ -89,7 +89,7 @@ public class DeepSpacePosition {
                 // then round the solved time to the nearest tick?
                 double transitionTicks;
                 try {
-                    transitionTicks = SOLVER.solve(10, func, 0, timescale);
+                    transitionTicks = SOLVER.solve(10, func, Math.min(timescale, 0), Math.max(timescale, 0));
                 } catch (MathIllegalStateException e) {
                     transitionTicks = lastCall.get();
                 }

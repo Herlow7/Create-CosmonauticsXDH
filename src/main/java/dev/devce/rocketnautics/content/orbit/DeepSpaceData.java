@@ -212,7 +212,7 @@ public class DeepSpaceData extends SavedData {
             size = chunkPowerSize * 16 + (2 << chunkPowerSize);
         }
         // derive id from Z position and chunk size
-        return new int[] { chunkPowerSize, negZ / (16 + size) };
+        return new int[] { chunkPowerSize, negZ / (16 + size - chunkPowerSize * 16) };
     }
 
     public static ChunkPos getMinCornerForParameters(int chunkPowerSize, int idWithinSize) {

@@ -5,6 +5,7 @@ import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
 import dev.devce.rocketnautics.content.physics.SpaceTransitionHandler;
+import dev.devce.rocketnautics.network.DebugLogPayload;
 import dev.devce.rocketnautics.network.DeepSpacePositionPayload;
 import it.unimi.dsi.fastutil.doubles.DoubleObjectPair;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -48,6 +49,8 @@ public final class DeepSpaceInstance {
     private final Map<UUID, DoubleObjectPair<Vector3d>> pendingPhysics = new Object2ObjectOpenHashMap<>();
 
     private boolean isProcessingRetirement = false;
+
+    private final Deque<Float> velocityChangeLast20Ticks = new ArrayDeque<>();
 
     public DeepSpaceInstance(DeepSpaceData manager, int chunkSideLength, ChunkPos minCorner, long id) {
         this.manager = manager;
@@ -134,6 +137,12 @@ public final class DeepSpaceInstance {
                 position.init(manager.getUniverse(), position.getFrame(),
                         new TimeStampedPVCoordinates(coords.getDate(), coords.getPosition(), coords.getVelocity().add(velocityChange)));
                 manager.setDirty();
+                velocityChangeLast20Ticks.addFirst((float) velocityChange.getNorm());
+            } else {
+                velocityChangeLast20Ticks.addFirst(0f);
+            }
+            if (velocityChangeLast20Ticks.size() > 20) {
+                velocityChangeLast20Ticks.removeLast();
             }
         }
         AbsoluteDate lastTime = position.getLocalUniverseTime();
@@ -146,7 +155,8 @@ public final class DeepSpaceInstance {
             ServerLevel deepSpace = server.getLevel(RocketDimensions.DEEP_SPACE);
             List<ServerPlayer> players = deepSpace.getPlayers(p -> boundingBox().contains(p.position()));
             for (ServerPlayer player : players) {
-                PacketDistributor.sendToPlayer(player, DeepSpacePositionPayload.of(position, manager.getUniverse()));
+                double velChange = velocityChangeLast20Ticks.stream().mapToDouble(f -> f).sum();
+                PacketDistributor.sendToPlayer(player, DeepSpacePositionPayload.of(position, manager.getUniverse()), new DebugLogPayload("Recent acceleration: " + velChange, 0xFFFFFF));
             }
         }
         // check for planetary intersection (this should be last)
