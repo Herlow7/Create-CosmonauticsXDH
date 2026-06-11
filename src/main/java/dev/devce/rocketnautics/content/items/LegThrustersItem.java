@@ -5,22 +5,19 @@ import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
 import com.simibubi.create.content.equipment.armor.BacktankUtil;
 import com.simibubi.create.content.equipment.armor.BaseArmorItem;
-import com.simibubi.create.content.equipment.armor.DivingHelmetItem;
-import com.simibubi.create.foundation.advancement.AllAdvancements;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.devce.rocketnautics.registry.RocketDataComponents;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
-import dev.ryanhcode.sable.mixinterface.entity.entities_stick_sublevels.EntityStickExtension;
 import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.EntityMovementExtension;
 import dev.ryanhcode.sable.mixinterface.entity.entity_sublevel_collision.LivingEntityMovementExtension;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Holder;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.resources.ResourceLocation;
@@ -128,7 +125,7 @@ public class LegThrustersItem extends BaseArmorItem {
         }
 
         boolean inFluid = !entity.isEyeInFluidType(NeoForgeMod.EMPTY_TYPE.value());
-        boolean inSpace = !GlobalSpacePhysicsHandler.canBreathe(entity);
+        boolean inSpace = GlobalSpacePhysicsHandler.getFlags(entity).contains(AtmosphereFlags.LOW_DENSITY);
 
         int period = inSpace ? 4 : inFluid ? 2 : 1;
 
@@ -150,9 +147,7 @@ public class LegThrustersItem extends BaseArmorItem {
         SubLevelContainer c = relativeID != null ? SubLevelContainer.getContainer(entity.level()) : null;
         SubLevel relative = c != null ? c.getSubLevel(relativeID) : null;
         if (relative != null && ((EntityMovementExtension) entity).sable$getTrackingSubLevel() != relative) {
-            Vector3d extra = ((LivingEntityMovementExtension) entity).sable$getInheritedVelocity();
-            Vector3f change = relative.logicalPose().position().sub(relative.lastPose().position(), new Vector3d()).sub(extra).get(new Vector3f());
-            entity.setPos(entity.position().add(new Vec3(change)));
+            ((LivingEntityMovementExtension) entity).sable$getInheritedVelocity().set(relative.logicalPose().position().sub(relative.lastPose().position(), new Vector3d()));
         }
         entity.setDeltaMovement(entity.getDeltaMovement().scale(0.9));
         return true;

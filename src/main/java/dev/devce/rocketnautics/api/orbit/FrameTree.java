@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * Holder for carefully defined frames that can be sent across network to the client.
@@ -172,6 +173,18 @@ public final class FrameTree {
 
     public @NotNull Frame getOrekitFrame() {
         return orekitFrame;
+    }
+
+    public void ifOrbit(Consumer<KeplerianOrbit> consumer) {
+        if (type == Type.KEPLERIAN_ORBIT) {
+            consumer.accept(orbit);
+        }
+    }
+
+    public void ifFixed(Consumer<Vector3D> consumer) {
+        if (type == Type.FIXED) {
+            consumer.accept(position);
+        }
     }
 
     public String getName() {

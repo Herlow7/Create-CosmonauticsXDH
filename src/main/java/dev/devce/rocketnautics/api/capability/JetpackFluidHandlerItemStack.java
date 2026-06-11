@@ -48,4 +48,35 @@ public class JetpackFluidHandlerItemStack extends FluidHandlerItemStack {
     public boolean canFillFluidType(FluidStack fluid) {
         return isFluidValid(0, fluid);
     }
+
+    @Override
+    public int fill(FluidStack resource, FluidAction doFill) {
+        if (container.getCount() != 1 || resource.isEmpty() || !canFillFluidType(resource)) {
+            return 0;
+        }
+
+        FluidStack contained = getFluid();
+        if (contained.isEmpty()) {
+            int fillAmount = Math.min(getTankCapacity(0), resource.getAmount());
+
+            if (doFill.execute()) {
+                setFluid(resource.copyWithAmount(fillAmount));
+            }
+
+            return fillAmount;
+        } else {
+            if (FluidStack.isSameFluidSameComponents(contained, resource)) {
+                int fillAmount = Math.min(getTankCapacity(0) - contained.getAmount(), resource.getAmount());
+
+                if (doFill.execute() && fillAmount > 0) {
+                    contained.grow(fillAmount);
+                    setFluid(contained);
+                }
+
+                return fillAmount;
+            }
+
+            return 0;
+        }
+    }
 }

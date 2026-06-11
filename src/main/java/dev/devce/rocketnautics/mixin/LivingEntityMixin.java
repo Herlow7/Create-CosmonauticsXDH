@@ -7,6 +7,8 @@ import com.llamalad7.mixinextras.sugar.ref.LocalDoubleRef;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
+import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
 import dev.devce.rocketnautics.content.physics.GlobalSpacePhysicsHandler;
 import dev.ryanhcode.sable.physics.config.dimension_physics.DimensionPhysicsData;
 import net.minecraft.world.entity.Entity;
@@ -31,8 +33,8 @@ public abstract class LivingEntityMixin extends Entity {
         int limit = RocketConfig.SERVER.entitySpeedLimit.get();
         // note that delta movement is in m/t not m/s, so we multiply our speed squared by a correction factor of 400 (20 * 20)
         if (!instance.onGround() && 400 * (x * x + y * y + z * z) <= limit * limit) {
-            double pressure = 1 - GlobalSpacePhysicsHandler.calculateGravityFactor(level(), instance.getY());
-            if (pressure < 1) {
+            double pressure = DeepSpaceHelper.getDataForDimension(instance.level()).map(PlanetDimensionData::entityDragMultiplier).orElse(PlanetDimensionData.EMPTY_BEZIER).evaluateFunction(instance.getY());
+            if (pressure != 1) {
                 double drag1 = 1 - (1 - f3) * pressure;
                 double drag2 = 1 - 0.02 * pressure;
                 original.call(instance, vec35.x * drag1, this instanceof FlyingAnimal ? d2 * drag1 : d2 * drag2, vec35.z * drag1);

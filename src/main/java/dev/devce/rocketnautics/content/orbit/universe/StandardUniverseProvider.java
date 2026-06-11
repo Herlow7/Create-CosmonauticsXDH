@@ -1,12 +1,16 @@
 package dev.devce.rocketnautics.content.orbit.universe;
 
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
 import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.universe.builder.PlanetDefinitionBuilder;
 import dev.devce.rocketnautics.content.orbit.universe.builder.UniverseDefinitionBuilder;
+import dev.ryanhcode.sable.physics.config.dimension_physics.BezierResourceFunction;
 import net.minecraft.world.level.Level;
 import org.hipparchus.geometry.euclidean.threed.Rotation;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
+
+import java.util.EnumSet;
 
 public final class StandardUniverseProvider {
     private static final double solRadius = 300_000_000D;
@@ -54,7 +58,11 @@ public final class StandardUniverseProvider {
                 .setClouds(true)
                 .setParentIsShadowLightSource()
                 .setLinkedDimension(Level.OVERWORLD)
-                .setDimensionTransferHeight(20000)
+                .setDimensionTransferHeight(20_000)
+                .addEntityDragPoint(4_000, 1, 0)
+                .addEntityDragPoint(7_000, 0, -0.0006)
+                .setAtmosphereFlagsBelow(5_000, AtmosphereFlags.empty())
+                .setAtmosphereFlagsBelow(21_000, EnumSet.of(AtmosphereFlags.DROWNING, AtmosphereFlags.LOW_DENSITY))
                 .setRadius(overworldRadius)
                 .setCircularOrbit(overworldOrbitalYearInOverworldDays * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRotationPeriod(Vector3D.MINUS_J, overworldDaynightCycleLengthSeconds)
@@ -70,9 +78,12 @@ public final class StandardUniverseProvider {
                 .setDimensionDayTimeController("sol")
                 .setApplyGravityCorrectionToEntities(true)
                 .setDimensionTransferHeight(20000)
+                .addEntityDragPoint(4_000, 1, 0)
+                .addEntityDragPoint(7_000, 0, -0.0006)
+                .setAtmosphereFlagsBelow(21_000, EnumSet.of(AtmosphereFlags.DROWNING, AtmosphereFlags.LOW_DENSITY))
                 .setCircularOrbit(lunarMonthInOverworldDays * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRadius(overworldRadius / 4)
-                .setTidalLocked(new Rotation(Vector3D.PLUS_K, Vector3D.PLUS_I))
+                .setTidalLocked()
                 .setPriority(0);
     }
 

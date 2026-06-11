@@ -3,7 +3,26 @@
   "acceleration_at_surface": 11.0,
   "dimension_data": {
     "allowed_transfer": "all",
+    "atmosphere_composition": {
+      "21000": [
+        "low_density",
+        "drowning"
+      ],
+      "5000": []
+    },
     "dimension_transfer_height": 20000,
+    "entity_drag_multiplier": [
+      {
+        "altitude": 4000.0,
+        "slope": 0.0,
+        "value": 1.0
+      },
+      {
+        "altitude": 7000.0,
+        "slope": -6.0E-4,
+        "value": 0.0
+      }
+    ],
     "linked_dimension": "minecraft:overworld"
   },
   "name": "overworld",
@@ -13,10 +32,6 @@
   },
   "position": {
     "type": "circular_orbit_period",
-    "coordinate_date": {
-      "atto": 0,
-      "sec": 0
-    },
     "orbit_axis": {
       "x": 0.0,
       "y": 1.0,

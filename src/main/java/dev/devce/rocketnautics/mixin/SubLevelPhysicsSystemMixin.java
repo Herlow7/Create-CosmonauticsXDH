@@ -6,6 +6,7 @@ import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
+import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +35,7 @@ public abstract class SubLevelPhysicsSystemMixin {
         DeepSpaceInstance handling = DeepSpaceData.getInstance(container.getLevel().getServer()).getInstanceForPos((int) position.x(), (int) position.z());
         RigidBodyHandle handle = this.getPhysicsHandle(subLevel);
         Vector3d velocity = handle.getLinearVelocity(new Vector3d());
-        if (handling == null) {
+        if (handling == null || !handling.boundingBox().contains(JOMLConversion.toMojang(position))) {
             // no movement allowed if you're not in an instance.
             handle.addLinearAndAngularVelocity(velocity.negate(), new Vector3d());
             return;
@@ -44,7 +45,8 @@ public abstract class SubLevelPhysicsSystemMixin {
         // if this projection lands outside the box radius, cancel the component of velocity moving outward, and halve the orthogonal component of velocity.
         Vector3dc center = handling.getCenter();
         Vector3d offset = position.sub(center, new Vector3d());
-        if (offset.lengthSquared() <= 1e-20 || (offset.length() + subLevel.boundingBox().size().length()) * 2 <= handling.getSideLength()) {
+        double overshoot = (offset.length() + subLevel.boundingBox().size().length()) * 2 - handling.getSideLength();
+        if (offset.lengthSquared() <= 1e-20 || overshoot <= 0) {
             // just register our mass, skipping any calculation
             handling.applyVelocity(subLevel.getUniqueId(), offset.zero(), subLevel.getMassTracker().getMass());
             return;
@@ -53,8 +55,10 @@ public abstract class SubLevelPhysicsSystemMixin {
         double dot = offset.dot(velocity);
         Vector3d aligned = offset.mul(dot, new Vector3d());
         Vector3d orthogonal = velocity.sub(aligned, new Vector3d());
-        if (dot < 0) {
-            aligned.zero(); // don't cancel velocity moving towards the center
+        if (dot <= 0) { // don't cancel velocity moving towards the center
+            aligned.zero();
+        } else if (overshoot > 1) { // pull objects that are too far out back towards the center
+            aligned.fma(Math.sqrt(overshoot), offset);
         }
         Vector3d cancelledComponent = orthogonal.mulAdd(0.5, aligned);
         handling.applyVelocity(subLevel.getUniqueId(), cancelledComponent, subLevel.getMassTracker().getMass());

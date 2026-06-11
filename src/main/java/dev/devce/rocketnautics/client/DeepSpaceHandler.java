@@ -7,6 +7,7 @@ import com.mojang.datafixers.util.Either;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
+import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
@@ -23,13 +24,17 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.debug.DebugRenderer;
 import net.minecraft.client.renderer.texture.SimpleTexture;
+import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.ArrayListDeque;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -54,7 +59,10 @@ public final class DeepSpaceHandler {
 
     private static @Nullable UniverseDefinition UNIVERSE;
     private static final Int2ObjectAVLTreeMap<IntObjectPair<PreparedTexture>> KNOWN_RENDER_DATA = new Int2ObjectAVLTreeMap<>();
-    
+
+    private static final ResourceLocation FORCEFIELD_LOCATION = ResourceLocation.withDefaultNamespace("textures/misc/forcefield.png");
+    private static final float FORCEFIELD_DIST = 8;
+
     private static long receivedUniverseDateTick = -1;
     private static AbsoluteDate receivedUniverseDate;
     private static float receivedUniverseTickrate;
@@ -208,11 +216,125 @@ public final class DeepSpaceHandler {
         PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
         poseStack.mulPose(event.getModelViewMatrix());
-        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(true);
-        AbsoluteDate currentDate = getRenderDate(partial);
-        renderUniverse(null, poseStack, null, event.getPartialTick().getGameTimeDeltaTicks(),
-                partial, currentDate, receivedPosition.getPosition(currentDate), receivedPosition.getFrame(), event.getCamera());
+        Vec3 position = event.getCamera().getPosition();
+        VoxelShape box = DeepSpaceData.getBoxForPosition(position);
+        if (box.bounds().contains(position)) {
+            float partial = event.getPartialTick().getGameTimeDeltaPartialTick(true);
+            AbsoluteDate currentDate = getRenderDate(partial);
+            renderUniverse(null, poseStack, null, event.getPartialTick().getGameTimeDeltaTicks(),
+                    partial, currentDate, receivedPosition.getPosition(currentDate), receivedPosition.getFrame(), event.getCamera());
+        }
+        renderInstanceBox(poseStack, position);
         poseStack.popPose();
+    }
+
+    private static boolean renderInstanceBox(PoseStack poseStack, Vec3 position) {
+        VoxelShape box = DeepSpaceData.getBoxForPosition(position);
+        RenderSystem.enableBlend();
+        RenderSystem.enableDepthTest();
+        RenderSystem.blendFuncSeparate(
+                GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO
+        );
+        RenderSystem.setShaderTexture(0, FORCEFIELD_LOCATION);
+        RenderSystem.depthMask(Minecraft.useShaderTransparency());
+        RenderSystem.setShader(GameRenderer::getPositionTexShader);
+        RenderSystem.polygonOffset(-3.0F, -3.0F);
+        RenderSystem.enablePolygonOffset();
+        RenderSystem.disableCull();
+        float maxX = (float) box.max(Direction.Axis.X);
+        float minX = (float) box.min(Direction.Axis.X);
+        float maxY = (float) box.max(Direction.Axis.Y);
+        float minY = (float) box.min(Direction.Axis.Y);
+        float maxZ = (float) box.max(Direction.Axis.Z);
+        float minZ = (float) box.min(Direction.Axis.Z);
+        float s = (float) Math.min(Minecraft.getInstance().gameRenderer.getDepthFar(), box.bounds().getXsize());
+        float s2 = s / 2;
+        float clampedX = (float) Mth.clamp(position.x(), minX + s2, maxX - s2);
+        float properX = (float) (clampedX - position.x());
+        float clampedY = (float) Mth.clamp(position.y(), minY + s2, maxY - s2);
+        float properY = (float) (clampedY - position.y());
+        float clampedZ = (float) Mth.clamp(position.z(), minZ + s2, maxZ - s2);
+        float properZ = (float) (clampedZ - position.z());
+
+        if (position.x() > maxX - FORCEFIELD_DIST) {
+            BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            float d = (float) (maxX - position.x());
+            double frac = Math.min(1, 1 - d / FORCEFIELD_DIST);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, (float) frac);
+
+            bufferbuilder.addVertex(poseStack.last(), d, properY + s2, properZ - s2).setUv(0 + clampedZ, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), d, properY + s2, properZ + s2).setUv(s + clampedZ, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), d, properY - s2, properZ + s2).setUv(s + clampedZ, s - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), d, properY - s2, properZ - s2).setUv(0 + clampedZ, s - clampedY);
+            BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        }
+        if (position.x() < minX + FORCEFIELD_DIST) {
+            BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            float d = (float) (minX - position.x());
+            double frac = Math.min(1, 1 + d / FORCEFIELD_DIST);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, (float) frac);
+
+            bufferbuilder.addVertex(poseStack.last(), d, properY + s2, properZ - s2).setUv(0 + clampedZ, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), d, properY + s2, properZ + s2).setUv(s + clampedZ, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), d, properY - s2, properZ + s2).setUv(s + clampedZ, s - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), d, properY - s2, properZ - s2).setUv(0 + clampedZ, s - clampedY);
+            BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        }
+        if (position.y() > maxY - FORCEFIELD_DIST) {
+            BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            float d = (float) (maxY - position.y());
+            double frac = Math.min(1, 1 - d / FORCEFIELD_DIST);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, (float) frac);
+
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, d, properZ - s2).setUv(0 + clampedZ, 0 - clampedX);
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, d, properZ + s2).setUv(s + clampedZ, 0 - clampedX);
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, d, properZ + s2).setUv(s + clampedZ, s - clampedX);
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, d, properZ - s2).setUv(0 + clampedZ, s - clampedX);
+            BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        }
+        if (position.y() < minY + FORCEFIELD_DIST) {
+            BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            float d = (float) (minY - position.y());
+            double frac = Math.min(1, 1 + d / FORCEFIELD_DIST);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, (float) frac);
+
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, d, properZ - s2).setUv(0 + clampedZ, 0 - clampedX);
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, d, properZ + s2).setUv(s + clampedZ, 0 - clampedX);
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, d, properZ + s2).setUv(s + clampedZ, s - clampedX);
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, d, properZ - s2).setUv(0 + clampedZ, s - clampedX);
+            BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        }
+        if (position.z() > maxZ - FORCEFIELD_DIST) {
+            BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            float d = (float) (maxZ - position.z());
+            double frac = Math.min(1, 1 - (maxZ - position.z()) / FORCEFIELD_DIST);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, (float) frac);
+
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, properY + s2, d).setUv(0 + clampedX, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, properY + s2, d).setUv(s + clampedX, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, properY - s2, d).setUv(s + clampedX, s - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, properY - s2, d).setUv(0 + clampedX, s - clampedY);
+            BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        }
+        if (position.z() < minZ + FORCEFIELD_DIST) {
+            BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            float d = (float) (minZ - position.z());
+            double frac = Math.min(1, 1 + d / FORCEFIELD_DIST);
+            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, (float) frac);
+
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, properY + s2, d).setUv(0 + clampedX, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, properY + s2, d).setUv(s + clampedX, 0 - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), properX + s2, properY - s2, d).setUv(s + clampedX, s - clampedY);
+            bufferbuilder.addVertex(poseStack.last(), properX - s2, properY - s2, d).setUv(0 + clampedX, s - clampedY);
+            BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        }
+
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.polygonOffset(0.0F, 0.0F);
+        RenderSystem.disablePolygonOffset();
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        return false;
     }
 
     private static void renderUniverse(@Nullable CubePlanet exclude, PoseStack poseStack, @Nullable Quaternionf rotation, float deltaTick, float partialTick, AbsoluteDate renderDate, Vector3D pos, Frame posFrame, Camera camera) {
@@ -591,7 +713,7 @@ public final class DeepSpaceHandler {
                 .setLightmapState(RenderStateShard.NO_LIGHTMAP)
                 .createCompositeState(false);
         return RenderType.create("rocketnautics_hologram", DefaultVertexFormat.POSITION_TEX_COLOR,
-                VertexFormat.Mode.QUADS, 256, true, true, rendertype$state);
+                VertexFormat.Mode.QUADS, 256, false, true, rendertype$state);
     }
 
 

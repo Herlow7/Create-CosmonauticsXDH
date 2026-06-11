@@ -1,9 +1,12 @@
 package dev.devce.rocketnautics.content.physics;
 
+import com.simibubi.create.content.equipment.armor.BacktankUtil;
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.items.LegThrustersItem;
+import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
 import dev.devce.rocketnautics.network.ReentryHeatPayload;
 import dev.devce.rocketnautics.registry.RocketParticles;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -12,6 +15,7 @@ import dev.ryanhcode.sable.platform.SableEventPlatform;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.physics.config.dimension_physics.DimensionPhysicsData;
+import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMaps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,14 +28,18 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingBreatheEvent;
+import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.tick.EntityTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.sounds.SoundSource;
 import dev.devce.rocketnautics.registry.RocketSounds;
+
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -395,7 +403,7 @@ public class GlobalSpacePhysicsHandler {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingBreathe(LivingBreatheEvent event) {
         if (event.canBreathe()) {
-            if (!canBreathe(event.getEntity())) {
+            if (getFlags(event.getEntity()).contains(AtmosphereFlags.DROWNING)) {
                 if ((!(event.getEntity() instanceof Player player) || !player.getAbilities().invulnerable)) {
                     event.setCanBreathe(false);
                 }
@@ -403,12 +411,28 @@ public class GlobalSpacePhysicsHandler {
         }
     }
 
-    public static boolean canBreathe(LivingEntity entity) {
-        return calculateGravityFactor(entity.level(), entity.getY()) < 0.5;
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onFallDamage(LivingFallEvent event) {
+        if (DeepSpaceHelper.getDataForDimension(event.getEntity().level()).map(PlanetDimensionData::applyGravityCorrectionToEntities).orElse(false)) {
+            double gravity = DimensionPhysicsData.getGravity(event.getEntity().level()).y();
+            double normalGravity = -11f;
+            event.setDistance((float) (event.getDistance() * gravity / normalGravity));
+        }
+    }
+
+    public static @NotNull EnumSet<AtmosphereFlags> getFlags(LivingEntity entity) {
+        if (DeepSpaceHelper.isDeepSpace(entity.level())) {
+            return EnumSet.of(AtmosphereFlags.DROWNING, AtmosphereFlags.LOW_DENSITY);
+        }
+        var data = DeepSpaceHelper.getDataForDimension(entity.level()).map(PlanetDimensionData::atmosphere).orElse(Int2ObjectSortedMaps.emptyMap());
+        var flags = data.tailMap((int) entity.getY()).firstEntry();
+        if (flags == null) return EnumSet.noneOf(AtmosphereFlags.class);
+        return flags.getValue();
     }
 
     public static boolean shouldDisplayTimer(Player player) {
-        return !canBreathe(player) || JetpackItem.isActive(player) || LegThrustersItem.legThrustersActive(player);
+        if (BacktankUtil.getAllWithAir(player).isEmpty()) return false;
+        return getFlags(player).contains(AtmosphereFlags.DROWNING) || JetpackItem.isActive(player) || LegThrustersItem.legThrustersActive(player);
     }
 
 //    /**

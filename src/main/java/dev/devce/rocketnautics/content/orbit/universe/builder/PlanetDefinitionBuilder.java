@@ -2,12 +2,16 @@ package dev.devce.rocketnautics.content.orbit.universe.builder;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import dev.devce.rocketnautics.api.orbit.AllowedTransfer;
+import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.api.orbit.FrameTree;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetExtras;
 import dev.devce.rocketnautics.content.orbit.universe.PointGravitySource;
+import dev.ryanhcode.sable.physics.config.dimension_physics.BezierResourceFunction;
+import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -20,6 +24,8 @@ import org.orekit.time.AbsoluteDate;
 import org.orekit.utils.TimeStampedAngularCoordinates;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
+import java.util.EnumSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntFunction;
@@ -44,11 +50,13 @@ public class PlanetDefinitionBuilder {
 
     // dimension data
     public Optional<ResourceKey<Level>> linkedDimension = Optional.empty();
-    public Optional<PlanetDimensionData.AllowedTransfer> allowedTransfer = Optional.empty();
+    public Optional<AllowedTransfer> allowedTransfer = Optional.empty();
     public Optional<Integer> transferHeight = Optional.empty();
+    public Optional<Int2ObjectRBTreeMap<EnumSet<AtmosphereFlags>>> atmosphere = Optional.empty();
     public Optional<Boolean> renderUniverseInDimension = Optional.empty();
     public Optional<String> dimensionDayTimeControllerName = Optional.empty();
     public Optional<Boolean> applyGravityCorrectionToEntities = Optional.empty();
+    public Optional<BezierResourceFunction> entityDragMultiplier = Optional.empty();
     // planet extras
     public Optional<Boolean> clouds = Optional.empty();
     public Optional<Boolean> star = Optional.empty();
@@ -96,10 +104,12 @@ public class PlanetDefinitionBuilder {
             this.linkedDimension = dimData.get().key();
             this.allowedTransfer = dimData.get().allowedTransfer();
             this.transferHeight = dimData.get().transitionHeight();
+            this.atmosphere = dimData.get().atmosphere();
             this.renderUniverseInDimension = dimData.get().renderUniverseInDimension();
             this.dimensionDayTimeControllerName = dimData.get().dimensionDayTimeControllerName();
             dimensionDayTimeControllerName.ifPresent(dependencies::add);
             this.applyGravityCorrectionToEntities = dimData.get().applyGravityCorrectionToEntities();
+            this.entityDragMultiplier = dimData.get().entityDragMultiplier();
         }
         if (extras.isPresent()) {
             this.clouds = extras.get().clouds();
@@ -131,7 +141,7 @@ public class PlanetDefinitionBuilder {
     }
 
     protected Optional<SerializableDimensionData> serializeDimensionData() {
-        return SerializableDimensionData.of(linkedDimension, allowedTransfer, transferHeight, renderUniverseInDimension, dimensionDayTimeControllerName, applyGravityCorrectionToEntities);
+        return SerializableDimensionData.of(linkedDimension, allowedTransfer, transferHeight, atmosphere, renderUniverseInDimension, dimensionDayTimeControllerName, applyGravityCorrectionToEntities, entityDragMultiplier);
     }
 
     protected Optional<SerializablePlanetExtras> serializePlanetExtras() {
@@ -190,7 +200,6 @@ public class PlanetDefinitionBuilder {
         } else {
             roi = Double.POSITIVE_INFINITY;
         }
-        ResourceLocation override;
         destination.gravitySource(new PointGravitySource(ourFrame, mu, roi));
         CubePlanet p = new CubePlanet(ourFrame, radius, angularCoordinates, constructDimensionData(destination), useTextureOverride.orElse(true) ? textureOverride.orElse(null) : null, constructExtras(destination));
         destination.cubePlanet(p);
@@ -206,7 +215,11 @@ public class PlanetDefinitionBuilder {
                 id = f.getId();
             }
         }
-        return new PlanetDimensionData(linkedDimension.get(), allowedTransfer.orElse(PlanetDimensionData.AllowedTransfer.NONE), transferHeight.orElse(20_000), renderUniverseInDimension.orElse(false), id, applyGravityCorrectionToEntities.orElse(false));
+        return new PlanetDimensionData(linkedDimension.get(), allowedTransfer.orElse(AllowedTransfer.NONE),
+                transferHeight.orElse(20_000),
+                atmosphere.map(m -> (Int2ObjectSortedMap<EnumSet<AtmosphereFlags>>) new Int2ObjectAVLTreeMap<>(m)).orElse(Int2ObjectSortedMaps.emptyMap()), // bake into an AVL map for improved search performance
+                renderUniverseInDimension.orElse(false), id, applyGravityCorrectionToEntities.orElse(false),
+                entityDragMultiplier.orElse(PlanetDimensionData.EMPTY_BEZIER));
     }
 
     protected PlanetExtras constructExtras(UniverseDefinitionBuilder destination) {
@@ -221,10 +234,10 @@ public class PlanetDefinitionBuilder {
     }
 
     public PlanetDefinitionBuilder setLinkedDimension(@Nullable ResourceKey<Level> linkedDimension) {
-        return setLinkedDimension(linkedDimension, PlanetDimensionData.AllowedTransfer.ALL);
+        return setLinkedDimension(linkedDimension, AllowedTransfer.ALL);
     }
 
-    public PlanetDefinitionBuilder setLinkedDimension(@Nullable ResourceKey<Level> linkedDimension, PlanetDimensionData.AllowedTransfer allowedTransfer) {
+    public PlanetDefinitionBuilder setLinkedDimension(@Nullable ResourceKey<Level> linkedDimension, AllowedTransfer allowedTransfer) {
         this.linkedDimension = Optional.ofNullable(linkedDimension);
         this.allowedTransfer = Optional.ofNullable(allowedTransfer);
         return this;
@@ -315,12 +328,12 @@ public class PlanetDefinitionBuilder {
     }
 
     public PlanetDefinitionBuilder setTidalLocked() {
-        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(1));
+        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(-1));
         return this;
     }
 
     public PlanetDefinitionBuilder setTidalLocked(Rotation correction) {
-        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(1, null, correction));
+        this.rotation = Optional.of(SerializableRotation.SpinOrbitResonance.of(-1, null, correction));
         return this;
     }
 
@@ -390,6 +403,27 @@ public class PlanetDefinitionBuilder {
      */
     public PlanetDefinitionBuilder setMu(double mu) {
         this.mu = Optional.of(mu);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setAtmosphereFlagsBelow(int altitude, EnumSet<AtmosphereFlags> flags) {
+        if (atmosphere.isEmpty()) {
+            atmosphere = Optional.of(new Int2ObjectRBTreeMap<>());
+        }
+        atmosphere.get().put(altitude, flags);
+        return this;
+    }
+
+    public PlanetDefinitionBuilder addEntityDragPoint(double altitude, double value, double slope) {
+        addEntityDragPoint(new BezierResourceFunction.BezierPoint(altitude, value, slope));
+        return this;
+    }
+
+    public PlanetDefinitionBuilder addEntityDragPoint(BezierResourceFunction.BezierPoint point) {
+        if (entityDragMultiplier.isEmpty()) {
+            entityDragMultiplier = Optional.of(new BezierResourceFunction());
+        }
+        entityDragMultiplier.get().addPoint(point);
         return this;
     }
 
