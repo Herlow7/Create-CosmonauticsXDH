@@ -24,7 +24,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.debug.DebugRenderer;
 import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
@@ -144,17 +143,14 @@ public final class DeepSpaceHandler {
             @Override
             public Vector3D next() {
                 while (positionPredictions.size() <= index) {
-                    // at each step, compute the distance from our orbited body, compute our current speed,
-                    // and determine the length of time it would take to travel that distance.
-                    // finally, step this amount of time multiplied by our config value.
                     TimeStampedPVCoordinates coords = nextPrediction.getCurrentPVCoords();
-                    if (coords.getDate().isAfterOrEqualTo(renderDate) | true) {
+                    if (coords.getDate().isAfterOrEqualTo(renderDate)) {
                         positionPredictions.addLast(Pair.of(coords.getDate(), nextPrediction.getCurrentOrbit()));
                     }
-                    double distance = coords.getPosition().getNorm();
-                    double speed = coords.getVelocity().getNorm();
-                    int lookaheadTicks = (int) (RocketConfig.CLIENT.orbitPredictionStepFactor.get() * distance / speed);
-                    nextPrediction.setTimescale(lookaheadTicks);
+                    // compute the angular velocity of the velocity vector
+                    double velocityAngularVelocity = coords.getVelocity().getNormSq() < 1e-10 ? 100000 : Math.sqrt(coords.getAcceleration().getNormSq() / coords.getVelocity().getNormSq());
+                    int lookaheadTicks = (int) (20 * Math.toRadians(RocketConfig.CLIENT.orbitPredictionAngularThreshold.get()) / velocityAngularVelocity);
+                    nextPrediction.setTimescale(lookaheadTicks + 1);
                     nextPrediction.propagate(UNIVERSE);
                 }
                 Pair<AbsoluteDate, Orbit> pair = positionPredictions.get(index);

@@ -157,11 +157,10 @@ public class HologramTableRenderer extends SafeBlockEntityRenderer<HologramTable
     }
 
     private void recurseRenderPlanetOrbit(VertexConsumer buffer, PoseStack ms, double scaleFactor, KeplerianOrbit orbit, AbsoluteDate point, double len, Predicate<Vector3D> skipCondition) {
-        double threshold = Math.PI / 32;
         PVCoordinates coords = orbit.getPVCoordinates(point, orbit.getFrame());
-        // alternative approach -- acceleration norm divided by velocity norm
-        double angularVelocity = coords.getAngularVelocity().getNorm();
-        if (angularVelocity * len > threshold) {
+        // compute the angular velocity of the velocity vector
+        double velocityAngularVelocity = coords.getVelocity().getNormSq() < 1e-10 ? 1000 : Math.sqrt(coords.getAcceleration().getNormSq() / coords.getVelocity().getNormSq());
+        if (velocityAngularVelocity * len > Math.toRadians(RocketConfig.CLIENT.orbitPredictionAngularThreshold.get())) {
             recurseRenderPlanetOrbit(buffer, ms, scaleFactor, orbit, point, len / 2, skipCondition);
             recurseRenderPlanetOrbit(buffer, ms, scaleFactor, orbit, point.shiftedBy(len / 2), len / 2, skipCondition);
         } else {
