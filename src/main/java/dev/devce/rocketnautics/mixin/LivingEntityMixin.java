@@ -33,7 +33,12 @@ public abstract class LivingEntityMixin extends Entity {
         int limit = RocketConfig.SERVER.entitySpeedLimit.get();
         // note that delta movement is in m/t not m/s, so we multiply our speed squared by a correction factor of 400 (20 * 20)
         if (!instance.onGround() && 400 * (x * x + y * y + z * z) <= limit * limit) {
-            double pressure = DeepSpaceHelper.getDataForDimension(instance.level()).map(PlanetDimensionData::entityDragMultiplier).orElse(PlanetDimensionData.EMPTY_BEZIER).evaluateFunction(instance.getY());
+            double pressure;
+            if (DeepSpaceHelper.isDeepSpace(level())) {
+                pressure = 0;
+            } else {
+                pressure = DeepSpaceHelper.getDataForDimension(instance.level()).map(PlanetDimensionData::entityDragMultiplier).orElse(PlanetDimensionData.EMPTY_BEZIER).evaluateFunction(instance.getY());
+            }
             if (pressure != 1) {
                 double drag1 = 1 - (1 - f3) * pressure;
                 double drag2 = 1 - 0.02 * pressure;
