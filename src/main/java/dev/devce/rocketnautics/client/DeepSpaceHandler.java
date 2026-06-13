@@ -210,22 +210,28 @@ public final class DeepSpaceHandler {
 
     @SubscribeEvent
     public static void onRenderLevelStage(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY || UNIVERSE == null) return;
         if (!DeepSpaceHelper.isDeepSpace()) return;
-        if (receivedPositionTick == -1) return;
-        PoseStack poseStack = event.getPoseStack();
-        poseStack.pushPose();
-        poseStack.mulPose(event.getModelViewMatrix());
-        Vec3 position = event.getCamera().getPosition();
-        VoxelShape box = DeepSpaceData.getBoxForPosition(position);
-        if (box.bounds().contains(position)) {
-            float partial = event.getPartialTick().getGameTimeDeltaPartialTick(true);
-            AbsoluteDate currentDate = getRenderDate(partial);
-            renderUniverse(null, poseStack, null, event.getPartialTick().getGameTimeDeltaTicks(),
-                    partial, currentDate, receivedPosition.getPosition(currentDate), receivedPosition.getFrame(), event.getCamera());
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
+            if (receivedPositionTick == -1 || UNIVERSE == null) return;
+            PoseStack poseStack = event.getPoseStack();
+            poseStack.pushPose();
+            poseStack.mulPose(event.getModelViewMatrix()); // after sky is so early that the pose stack does not have the view rotation applied
+            Vec3 position = event.getCamera().getPosition();
+            VoxelShape box = DeepSpaceData.getBoxForPosition(position);
+            if (box.bounds().contains(position)) {
+                float partial = event.getPartialTick().getGameTimeDeltaPartialTick(true);
+                AbsoluteDate currentDate = getRenderDate(partial);
+                renderUniverse(null, poseStack, null, event.getPartialTick().getGameTimeDeltaTicks(),
+                        partial, currentDate, receivedPosition.getPosition(currentDate), receivedPosition.getFrame(), event.getCamera());
+            }
+            poseStack.popPose();
+        } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
+            PoseStack poseStack = event.getPoseStack();
+            poseStack.pushPose();
+            Vec3 position = event.getCamera().getPosition();
+            renderInstanceBox(poseStack, position);
+            poseStack.popPose();
         }
-        renderInstanceBox(poseStack, position);
-        poseStack.popPose();
     }
 
     private static boolean renderInstanceBox(PoseStack poseStack, Vec3 position) {
