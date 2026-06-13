@@ -35,7 +35,7 @@ public abstract class WElement {
     }
 
     /**
-     * @return Total height including padding and margin.
+     * @return Total width including padding and margin.
      */
     public int getHeight() {
         return height + padding * 2 + margin * 2;

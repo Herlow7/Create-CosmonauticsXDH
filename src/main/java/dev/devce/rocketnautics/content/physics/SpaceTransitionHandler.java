@@ -21,12 +21,12 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunkMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.minecraft.core.Direction;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -35,12 +35,9 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.hipparchus.geometry.euclidean.threed.Rotation;
-import org.hipparchus.geometry.euclidean.threed.RotationConvention;
-import org.hipparchus.geometry.euclidean.threed.Vector3D;
-import org.jetbrains.annotations.NotNull;
 import org.joml.*;
 import org.orekit.time.AbsoluteDate;
+import org.orekit.utils.TimeStampedPVCoordinates;
 
 import java.util.*;
 
@@ -84,7 +81,7 @@ public class SpaceTransitionHandler {
                         RigidBodyHandle handle = physicsSystem.getPhysicsHandle(ship);
                         double captureSize = ship.boundingBox().size().length();
                         DeepSpaceInstance claimed = instance.claimNewInstance((int) (captureSize / 8 + 2));
-                        Quaterniond rotation = initInstance(claimed, ship.logicalPose().position(), handle.getLinearVelocity(new Vector3d()), linked, ship);
+                        Quaterniond rotation = initInstance(claimed, ship.logicalPose().position(), handle.getLinearVelocity(new Vector3d()), linked, level);
                         ServerLevel deepSpace = level.getServer().getLevel(RocketDimensions.DEEP_SPACE);
                         // Handle all players nearby
                         Map<ServerPlayer, UUID> riding = new Object2ObjectOpenHashMap<>();
@@ -93,7 +90,6 @@ public class SpaceTransitionHandler {
                             if (pl.isPassenger()) {
                                 riding.put(pl, pl.getVehicle().getUUID());
                             }
-                            //ship.logicalPose().orientation().transformInverse(rotation.transform(ship.logicalPose().orientation().transform(offset)))
                             Vector3f offset = pl.position().toVector3f().sub(pos.get(new Vector3f()));
                             Vector3f o = rotation.transform(offset);
                             pl.teleportTo(deepSpace, claimed.getCenter().x() + o.x(), claimed.getCenter().y() + o.y(), claimed.getCenter().z() + o.z(), pl.getYRot(), pl.getXRot());
@@ -111,56 +107,14 @@ public class SpaceTransitionHandler {
         });
     }
 
-    public static void exitDeepSpace(MinecraftServer server, CubePlanet destination, Rotation correctionRotation, Vector3D positionInPlanetFrame, @NotNull Direction.Axis majorAxis, DeepSpaceInstance instance, Runnable afterFinished) {
+    public static void exitDeepSpace(MinecraftServer server, CubePlanet destination, TimeStampedPVCoordinates coords, DeepSpaceInstance instance, Runnable afterFinished) {
         assert destination.linkedDimension() != null;
         final ServerLevel deepSpace = server.getLevel(RocketDimensions.DEEP_SPACE);
-        double scaleFactor = 30_000_000 / destination.radius();
         double targetHeight = destination.linkedDimension().transitionHeight() - SpaceTransitionHandler.TRANSITION_SAFE_OFFSET;
-        Vector3D p = correctionRotation.applyInverseTo(positionInPlanetFrame);
-        Vector3D axi;
-        Vector3d destPos = switch (majorAxis) {
-            case X -> {
-                if (p.getX() > 0) {
-                    // pos y => neg z
-                    // pos z => neg x
-                    axi = Vector3D.PLUS_I;
-                    yield new Vector3d(-p.getZ() * scaleFactor, targetHeight, -p.getY() * scaleFactor);
-                } else {
-                    // pos y => neg z
-                    // pos z => pos x
-                    axi = Vector3D.MINUS_I;
-                    yield new Vector3d(p.getZ() * scaleFactor, targetHeight, -p.getY() * scaleFactor);
-                }
-            }
-            case Z -> {
-                if (p.getZ() > 0) {
-                    // pos y => neg z
-                    // pos x => pos x
-                    axi = Vector3D.PLUS_K;
-                    yield new Vector3d(p.getX() * scaleFactor, targetHeight, -p.getY() * scaleFactor);
-                } else {
-                    // pos y => neg z
-                    // pos x => neg x
-                    axi = Vector3D.MINUS_K;
-                    yield new Vector3d(-p.getX() * scaleFactor, targetHeight, -p.getY() * scaleFactor);
-                }
-            }
-            case Y -> {
-
-                if (p.getY() > 0) {
-                    axi = Vector3D.PLUS_J;
-                } else {
-                    axi = Vector3D.MINUS_J;
-                }
-                // pos x => pos x
-                // pos z => pos z
-                yield new Vector3d(p.getX() * scaleFactor, targetHeight, p.getZ() * scaleFactor);
-            }
-        };
         ServerLevel destLevel = server.getLevel(destination.linkedDimension().key());
         if (destLevel == null) return;
-        Rotation rotation = correctionRotation.compose(new Rotation(Vector3D.PLUS_J, axi), RotationConvention.VECTOR_OPERATOR);
-        Quaterniond rot = DeepSpaceHelper.adapt(rotation).conjugate();
+        var dest = DeepSpaceHelper.globalPositionToLocalPositionAndRotation(coords, destination, destLevel);
+        dest.left().setComponent(1, targetHeight);
         // Handle all players in the instance
         Map<ServerPlayer, UUID> riding = new Object2ObjectOpenHashMap<>();
         for (ServerPlayer pl : deepSpace.getPlayers(pl -> instance.boundingBox().contains(pl.position()))) {
@@ -169,14 +123,14 @@ public class SpaceTransitionHandler {
                 riding.put(pl, pl.getVehicle().getUUID());
             }
             Vec3 offset = pl.position().subtract(instance.boundingBox().getCenter());
-            Vector3f o = rot.transform(offset.toVector3f());
-            pl.teleportTo(destLevel, destPos.x() + o.x(), destPos.y() + o.y(), destPos.z() + o.z(), pl.getYRot(), pl.getXRot());
+            Vector3f o = dest.right().transform(offset.toVector3f());
+            pl.teleportTo(destLevel, dest.left().x() + o.x(), dest.left().y() + o.y(), dest.left().z() + o.z(), pl.getYRot(), pl.getXRot());
         }
         // Handle ships currently in the instance
         List<ChunkPos> unloaded = instance.interiorPositions().filter(cPos -> !deepSpace.hasChunk(cPos.x, cPos.z)).toList();
         Set<UUID> seen = new ObjectOpenHashSet<>();
         if (unloaded.size() != instance.getChunkSideLength() * instance.getChunkSideLength()) {
-            exitLoadedFromDeepSpace(instance, deepSpace, rot, destLevel, destPos, seen);
+            exitLoadedFromDeepSpace(instance, deepSpace, dest.right(), destLevel, dest.left(), seen);
         }
         // whatever the player was riding was absolutely loaded
         riding.forEach((pl, e) -> pl.startRiding(destLevel.getEntity(e), true));
@@ -195,7 +149,7 @@ public class SpaceTransitionHandler {
                 });
                 ((DistanceManagerAccessor) deepSpace.getChunkSource().chunkMap.getDistanceManager()).rocketnautics$tickingTicketsTracker().runAllUpdates();
                 map.processChanges();
-                exitLoadedFromDeepSpace(instance, deepSpace, rot, destLevel, destPos, seen);
+                exitLoadedFromDeepSpace(instance, deepSpace, dest.right(), destLevel, dest.left(), seen);
                 part.forEach(cPos -> {
                     map.updateChunkStatus(cPos, false);
                 });
@@ -225,10 +179,10 @@ public class SpaceTransitionHandler {
         }
     }
 
-    private static Quaterniond initInstance(DeepSpaceInstance instance, Vector3dc dimPosition, Vector3dc velocity, CubePlanet planet, ServerSubLevel ship) {
+    private static Quaterniond initInstance(DeepSpaceInstance instance, Vector3dc dimPosition, Vector3dc velocity, CubePlanet planet, Level level) {
         AbsoluteDate currentDate = instance.getManager().getUniverseTime();
         Vector3d safe = new Vector3d(0, TRANSITION_SAFE_OFFSET, 0).add(dimPosition);
-        var globalCoords = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(safe, velocity, planet, currentDate);
+        var globalCoords = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(safe, velocity, level, planet, currentDate);
         instance.getPosition().init(instance.getManager().getUniverse(), planet.orekitFrame(), globalCoords.first());
         return DeepSpaceHelper.adapt(globalCoords.second());
     }

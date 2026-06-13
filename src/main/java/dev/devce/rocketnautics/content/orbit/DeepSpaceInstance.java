@@ -180,26 +180,11 @@ public final class DeepSpaceInstance {
             double dz = Math.max(0, az - lastOrbiting.radius());
             double d2 = dx * dx + dy * dy + dz * dz;
             if (d2 < lastOrbiting.linkedDimension().transitionHeight() * lastOrbiting.linkedDimension().transitionHeight()) {
-                Rotation r = lastOrbiting.getRotationAtTime(lastTime);
-                // at most one of these will be true
-                boolean xMajor = ax > ay && ax > az;
-                boolean zMajor = az > ax && az > ay;
-                boolean yMajor = ay > ax && ay > az;
-                Direction.Axis a;
-                if (xMajor) {
-                    a = Direction.Axis.X;
-                } else if (zMajor) {
-                    a = Direction.Axis.Z;
-                } else if (yMajor) {
-                    a = Direction.Axis.Y;
-                } else {
-                    return;
-                }
-                // ensure we properly retrieve and kick everything inside this instance to the destination dimension
                 // TODO what about players that are logged out?
-                // Track their instance in entity data, on load see if/where that instance exited?
-                SpaceTransitionHandler.exitDeepSpace(server, lastOrbiting, r, lastPosition, a, this,
-                        () -> manager.retireInstance(this.getId()));
+                // Track their instance in entity data, on login see if/where that instance exited?
+                // Track logged out players in the instance, and add it to a map that we check on login that has the destination position?
+                SpaceTransitionHandler.exitDeepSpace(server, lastOrbiting, new TimeStampedPVCoordinates(lastTime, lastPosition, Vector3D.ZERO),
+                        this, () -> manager.retireInstance(this.getId()));
                 isProcessingRetirement = true;
             }
         }

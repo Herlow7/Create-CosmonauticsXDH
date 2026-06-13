@@ -389,12 +389,12 @@ public class WNodeScreen extends Screen {
             WNode tgt = findNode(conn.targetNode());
             if (src != null && tgt != null) {
                 int sx = mx + mw/2 + (int)((src.getX() + src.getWidth() + panX - width/2) * scale);
-//                 int sy = my + mh/2 + (int)((src.getY() + 18 + conn.sourcePin() * 12 + panY - height/2) * scale);
+//                 int sy = my + mh/2 + (int)((src.getY() + 18 + conn.sourcePin() * 12 + panY - width/2) * scale);
                 // AI FIX/ADD START
                 int sy = my + mh/2 + (int)((src.getY() + 22 + conn.sourcePin() * 12 + panY - height/2) * scale);
                 // AI FIX/ADD STOP
                 int tx = mx + mw/2 + (int)((tgt.getX() + panX - width/2) * scale);
-//                 int ty = my + mh/2 + (int)((tgt.getY() + 18 + conn.targetPin() * 12 + panY - height/2) * scale);
+//                 int ty = my + mh/2 + (int)((tgt.getY() + 18 + conn.targetPin() * 12 + panY - width/2) * scale);
                 // AI FIX/ADD START
                 int ty = my + mh/2 + (int)((tgt.getY() + 22 + conn.targetPin() * 12 + panY - height/2) * scale);
                 // AI FIX/ADD STOP

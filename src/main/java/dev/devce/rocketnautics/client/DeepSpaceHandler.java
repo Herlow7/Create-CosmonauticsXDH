@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.*;
 import com.mojang.datafixers.util.Either;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
+import dev.devce.rocketnautics.api.orbit.ColorPalette;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
@@ -13,10 +14,7 @@ import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import dev.devce.rocketnautics.network.PlanetRenderRequestPayload;
 import it.unimi.dsi.fastutil.Pair;
-import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
-import it.unimi.dsi.fastutil.ints.IntObjectPair;
+import it.unimi.dsi.fastutil.ints.*;
 import net.minecraft.Util;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -59,6 +57,7 @@ public final class DeepSpaceHandler {
 
     private static @Nullable UniverseDefinition UNIVERSE;
     private static final Int2ObjectAVLTreeMap<IntObjectPair<PreparedTexture>> KNOWN_RENDER_DATA = new Int2ObjectAVLTreeMap<>();
+    private static final Int2BooleanAVLTreeMap AWAITING_SERVER = new Int2BooleanAVLTreeMap();
 
     private static final ResourceLocation FORCEFIELD_LOCATION = ResourceLocation.withDefaultNamespace("textures/misc/forcefield.png");
     private static final float FORCEFIELD_DIST = 8;
@@ -201,11 +200,12 @@ public final class DeepSpaceHandler {
         };
     }
 
-    public static void receiveRenderData(int id, Either<byte[], ResourceLocation> data, int powerScale) {
+    public static void receiveRenderData(int id, Either<ColorPalette, ResourceLocation> data, int powerScale) {
         KNOWN_RENDER_DATA.put(id, IntObjectPair.of(powerScale, data.<PreparedTexture>map(arr -> DeepSpaceTexture.construct(id, arr), res -> {
             Minecraft.getInstance().getTextureManager().register(res, new SimpleTexture(res));
             return () -> res;
         })));
+        AWAITING_SERVER.remove(id);
     }
 
     @SubscribeEvent
@@ -359,7 +359,9 @@ public final class DeepSpaceHandler {
             if (planet.right() == exclude) continue;
             poseStack.pushPose();
             if (renderPlanet(planet.right(), planet.left(), poseStack, renderDate, celestialAngle, partialTick)) {
-                needRenderData.add(planet.right().id());
+                if (!AWAITING_SERVER.put(planet.right().id(), true)) {
+                    needRenderData.add(planet.right().id());
+                }
             }
             poseStack.popPose();
         }
@@ -664,7 +666,9 @@ public final class DeepSpaceHandler {
             }
             poseStack.pushPose();
             if (renderHoloPlanet(planet.right(), planet.left(), poseStack, date, scale, source, 0.9f, 0.9f, 1.0f, 0.9f)) {
-                needRenderData.add(planet.right().id());
+                if (!AWAITING_SERVER.put(planet.right().id(), true)) {
+                    needRenderData.add(planet.right().id());
+                }
             } else {
                 renderedPlanets.add(planet.right());
             }
@@ -824,13 +828,13 @@ public final class DeepSpaceHandler {
         return ((long)r << 24) | ((long)g << 16) | ((long)b << 8) | a;
     }
     
-    public static void renderUniverseForLevel(ResourceKey<Level> dimension, Vec3 position, PoseStack poseStack, float partialDelta, float partialTick, Camera camera) {
+    public static void renderUniverseForLevel(Level level, Vec3 position, PoseStack poseStack, float partialDelta, float partialTick, Camera camera) {
         if (UNIVERSE == null || receivedUniverseDateTick == -1) return;
-        CubePlanet planet = UNIVERSE.getPlanetByDimension(dimension);
+        CubePlanet planet = UNIVERSE.getPlanetByDimension(level.dimension());
         if (planet == null || planet.linkedDimension() == null || !planet.linkedDimension().renderUniverseInDimension()) return;
         poseStack.pushPose();
         AbsoluteDate date = getPredictedUniverseDate(partialTick);
-        var globalCoords = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(position.toVector3f().get(new Vector3d()), null, planet, date);
+        var globalCoords = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(position.toVector3f().get(new Vector3d()),  null, level, planet, date);
         poseStack.mulPose(DeepSpaceHelper.adapt(globalCoords.second()).get(new Quaternionf()).conjugate());
         renderUniverse(planet, poseStack, null, partialDelta, partialTick, date, globalCoords.first().getPosition(), planet.orekitFrame(), camera);
         poseStack.popPose();

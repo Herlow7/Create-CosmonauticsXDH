@@ -79,7 +79,7 @@ public class ConfigurablyBiasedToBottomFloat extends FloatProvider {
     public float sample(RandomSource random) {
         float span = maxExclusive - minInclusive - inner;
         if (span <= 0) {
-            RocketNautics.LOGGER.warn("Empty height range: {}", this);
+            RocketNautics.LOGGER.warn("Empty width range: {}", this);
             return minInclusive;
         } else {
             float k = 1;

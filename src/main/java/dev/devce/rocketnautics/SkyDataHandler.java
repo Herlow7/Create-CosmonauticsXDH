@@ -2,18 +2,24 @@
 
 package dev.devce.rocketnautics;
 
-import dev.devce.rocketnautics.client.PlanetColors;
-import dev.devce.rocketnautics.content.physics.SpaceTransitionHandler;
+import dev.devce.rocketnautics.api.orbit.ColorPalette;
+import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
+import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
+import dev.devce.rocketnautics.content.orbit.universe.DeepSpaceTextureDefinition;
 import dev.devce.rocketnautics.network.PlanetMapPayload;
 import it.unimi.dsi.fastutil.doubles.DoubleObjectPair;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.level.border.BorderChangeListener;
+import net.minecraft.world.level.border.WorldBorder;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -34,11 +40,15 @@ public class SkyDataHandler {
 
     public final ServerLevel level;
     protected final RecursiveDataSquare root;
+    protected final DeepSpaceDataSquare deepSpace;
+    protected final DeepSpaceTextureDefinition.BiomeSampleDriven mapper;
 
-    public SkyDataHandler(ServerLevel level) {
+    public SkyDataHandler(ServerLevel level, DeepSpaceTextureDefinition.BiomeSampleDriven mapper) {
         this.level = level;
-        
         this.root = new RecursiveDataSquare(null, MAX_POWER_SIZE + 1, -MAX_TRUE_SIZE, -MAX_TRUE_SIZE);
+        this.mapper = mapper;
+        this.deepSpace = new DeepSpaceDataSquare(level.getWorldBorder());
+        level.getWorldBorder().addListener(deepSpace);
     }
 
     
@@ -53,20 +63,17 @@ public class SkyDataHandler {
         if (OVERRIDES.containsKey(level.dimension())) {
             level = level.getServer().getLevel(OVERRIDES.get(level.dimension()).right());
         }
-        return HANDLERS.computeIfAbsent(level, SkyDataHandler::new);
+        return HANDLERS.computeIfAbsent(level, l -> {
+            DeepSpaceData d = DeepSpaceData.getInstance(l.getServer());
+            CubePlanet associated = d.getUniverse().getPlanetByDimension(l.dimension());
+            DeepSpaceTextureDefinition.BiomeSampleDriven mapper = associated == null ? null : (associated.textureDefinition() instanceof DeepSpaceTextureDefinition.BiomeSampleDriven sample ? sample : null);
+            return new SkyDataHandler(l, mapper);
+        });
     }
 
-    public byte[] getRenderDataForDeepSpace(int powerSizeClamp) {
-        // we can render the root at this point
-        DataSquare square = root;
-        while (powerSizeClamp < square.powerSize) {
-            if (square instanceof RecursiveDataSquare r) {
-                square = r.getChildAtTruePosition(0, 0);
-            } else {
-                break;
-            }
-        }
-        return square.getRenderData();
+    public ColorPalette getRenderDataForDeepSpace(int powerSizeClamp) {
+        // TODO respect power size clamp
+        return deepSpace.getRenderData();
     }
 
     public PlanetMapPayload getRenderDataAtScaleAndPosition(int powerSize, int trueX, int trueZ) {
@@ -209,7 +216,7 @@ public class SkyDataHandler {
         public final int trueNegXCorner;
         public final int trueNegZCorner;
 
-        protected byte[] renderData;
+        protected ColorPalette renderData;
 
         public DataSquare(@Nullable RecursiveDataSquare parent, int powerSize, int trueNegXCorner, int trueNegZCorner) {
             this.parent = parent;
@@ -218,7 +225,7 @@ public class SkyDataHandler {
             this.trueNegZCorner = trueNegZCorner;
         }
 
-        public byte[] getRenderData() {
+        public ColorPalette getRenderData() {
             if (renderData == null) {
                 buildRenderData();
             }
@@ -234,10 +241,13 @@ public class SkyDataHandler {
         }
 
         protected void buildRenderData() {
-            renderData = new byte[256 * 256];
+            renderData = ColorPalette.EMPTY;
+            if (mapper == null) return;
+            var builder = new ColorPalette.PaletteBuilder(mapper.packedFallback());
             try {
                 BiomeSource source = level.getChunkSource().getGenerator().getBiomeSource();
                 Climate.Sampler sampler = level.getChunkSource().randomState().sampler();
+                Object2IntMap<Holder<Biome>> cache = new Object2IntOpenHashMap<>();
 
                 int step = toTrueSize(powerSize - 8); 
 
@@ -247,12 +257,94 @@ public class SkyDataHandler {
                         int worldZ = trueNegZCorner + z * step;
                         // use some arbitrarily large value as our y picker so we don't get underground biomes
                         Holder<Biome> biome = source.getNoiseBiome(worldX >> 2, 1000, worldZ >> 2, sampler);
-                        renderData[x + z * 256] = PlanetColors.getBiomeColor(biome);
+                        builder.write(x, z, cache.computeIfAbsent(biome, mapper::match));
                     }
+                }
+
+                for (DeepSpaceTextureDefinition.BiomeSampleDriven.ColorEntry entry : mapper.colors()) {
+                    builder.attachFlags(entry.packedColor(), entry.flags());
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            renderData = builder.build();
         }
+    }
+
+    protected class DeepSpaceDataSquare implements BorderChangeListener {
+        protected ColorPalette renderData = null;
+        protected double diameter;
+        protected double centerX;
+        protected double centerZ;
+
+        public DeepSpaceDataSquare(WorldBorder border) {
+            if (mapper == null) {
+                renderData = ColorPalette.EMPTY;
+            }
+            this.diameter = border.getSize();
+            this.centerX = border.getCenterX();
+            this.centerZ = border.getCenterZ();
+        }
+
+        public ColorPalette getRenderData() {
+            synchronized (this) {
+                if (renderData == null) {
+                    var builder = new ColorPalette.PaletteBuilder(mapper.packedFallback());
+                    try {
+                        BiomeSource source = level.getChunkSource().getGenerator().getBiomeSource();
+                        Climate.Sampler sampler = level.getChunkSource().randomState().sampler();
+                        Object2IntMap<Holder<Biome>> cache = new Object2IntOpenHashMap<>();
+
+                        for (int x = 0; x < 256; x++) {
+                            for (int z = 0; z < 256; z++) {
+                                int worldX = (int) (diameter * (x - 128) / 128 + centerX);
+                                int worldZ = (int) (diameter * (z - 128) / 128 + centerZ);
+                                // use some arbitrarily large value as our y picker so we don't get underground biomes
+                                Holder<Biome> biome = source.getNoiseBiome(worldX >> 2, 1000, worldZ >> 2, sampler);
+                                builder.write(x, z, cache.computeIfAbsent(biome, mapper::match));
+                            }
+                        }
+
+                        for (DeepSpaceTextureDefinition.BiomeSampleDriven.ColorEntry entry : mapper.colors()) {
+                            builder.attachFlags(entry.packedColor(), entry.flags());
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    renderData = builder.build();
+                }
+                return renderData;
+            }
+        }
+
+        @Override
+        public void onBorderSizeSet(@NotNull WorldBorder p_61847_, double p_61848_) {
+            renderData = null;
+            diameter = p_61848_;
+        }
+
+        @Override
+        public void onBorderSizeLerping(@NotNull WorldBorder p_61852_, double p_61853_, double p_61854_, long p_61855_) {
+            this.onBorderSizeSet(p_61852_, p_61854_);
+        }
+
+        @Override
+        public void onBorderCenterSet(@NotNull WorldBorder p_61849_, double p_61850_, double p_61851_) {
+            renderData = null;
+            centerX = p_61850_;
+            centerZ = p_61851_;
+        }
+
+        @Override
+        public void onBorderSetWarningTime(@NotNull WorldBorder p_61856_, int p_61857_) {}
+
+        @Override
+        public void onBorderSetWarningBlocks(@NotNull WorldBorder p_61860_, int p_61861_) {}
+
+        @Override
+        public void onBorderSetDamagePerBlock(@NotNull WorldBorder p_61858_, double p_61859_) {}
+
+        @Override
+        public void onBorderSetDamageSafeZOne(@NotNull WorldBorder p_61862_, double p_61863_) {}
     }
 }

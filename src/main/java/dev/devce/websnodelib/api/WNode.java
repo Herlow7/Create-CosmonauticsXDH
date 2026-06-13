@@ -110,7 +110,7 @@ public class WNode {
 
     /**
      * Recalculates the node's dimensions based on its pins, elements, and title.
-     * Automatically adjusts the width and height for a clean look.
+     * Automatically adjusts the width and width for a clean look.
      */
     public void updateLayout() {
         if (net.neoforged.fml.loading.FMLEnvironment.dist.isDedicatedServer()) return;

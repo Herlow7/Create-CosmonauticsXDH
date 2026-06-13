@@ -76,7 +76,7 @@ public class HologramTableRenderer extends SafeBlockEntityRenderer<HologramTable
             CubePlanet inhabiting = universe.getPlanetByDimension(be.getLevel().dimension());
             if (inhabiting == null) return;
             centerFrame = inhabiting.orekitFrame();
-            posInFrame = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(JOMLConversion.atCenterOf(be.getBlockPos(), new Vector3d()), null, inhabiting, renderDate).first().getPosition();
+            posInFrame = DeepSpaceHelper.localPositionToGlobalPositionAndRotation(Sable.HELPER.projectOutOfSubLevel(be.getLevel(), JOMLConversion.atCenterOf(be.getBlockPos(), new Vector3d())), null, be.getLevel(), inhabiting, renderDate).first().getPosition();
         }
         ms.pushPose();
         ms.translate(0.5, holoSize / 2d + 1, 0.5);

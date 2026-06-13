@@ -3,12 +3,14 @@ package dev.devce.rocketnautics.network;
 import com.mojang.datafixers.util.Either;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
+import dev.devce.rocketnautics.api.orbit.ColorPalette;
 import dev.devce.rocketnautics.client.DeepSpaceHandler;
 import dev.devce.rocketnautics.client.SkyHandler;
 import dev.devce.rocketnautics.content.items.JetpackItem;
 import dev.devce.rocketnautics.content.items.LegThrustersItem;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
+import dev.devce.rocketnautics.content.orbit.universe.DeepSpaceTextureDefinition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -163,7 +165,7 @@ public class NetworkHandler {
     }
 
     @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
-    private static void handleMapData(int powerSize, int centerX, int centerZ, byte[] mapDataPosXPosZ, byte[] mapDataPosXNegZ, byte[] mapDataNegXPosZ, byte[] mapDataNegXNegZ) {
+    private static void handleMapData(int powerSize, int centerX, int centerZ, ColorPalette mapDataPosXPosZ, ColorPalette mapDataPosXNegZ, ColorPalette mapDataNegXPosZ, ColorPalette mapDataNegXNegZ) {
         SkyHandler.updatePlanetTexture(powerSize, centerX, centerZ, mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ);
     }
 
@@ -183,11 +185,11 @@ public class NetworkHandler {
                 CubePlanet planet = def.getPlanetById(id);
                 // computing the render data may take time, so we dispatch in separate packets.
                 // would it be better to send a single large packet after loading everything?
-                Either<byte[], ResourceLocation> send;
+                Either<ColorPalette, ResourceLocation> send;
                 if (planet == null) {
                     send = Either.right(ResourceLocation.withDefaultNamespace("missingno"));
-                } else if (planet.textureOverride() != null) {
-                    send = Either.right(planet.textureOverride());
+                } else if (planet.textureDefinition() instanceof DeepSpaceTextureDefinition.ResourceLocationDriven resloc) {
+                    send = Either.right(resloc.texture());
                 } else {
                     send = Either.left(planet.getRenderData(level.getServer(), powerSize));
                 }
@@ -198,7 +200,7 @@ public class NetworkHandler {
     }
 
     @net.neoforged.api.distmarker.OnlyIn(net.neoforged.api.distmarker.Dist.CLIENT)
-    private static void handlePlanetRenderData(int id, Either<byte[], ResourceLocation> renderData, int powerSize) {
+    private static void handlePlanetRenderData(int id, Either<ColorPalette, ResourceLocation> renderData, int powerSize) {
         DeepSpaceHandler.receiveRenderData(id, renderData, powerSize);
     }
 

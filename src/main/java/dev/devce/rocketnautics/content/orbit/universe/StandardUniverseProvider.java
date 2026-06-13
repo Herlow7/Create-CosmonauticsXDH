@@ -2,12 +2,15 @@ package dev.devce.rocketnautics.content.orbit.universe;
 
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
+import dev.devce.rocketnautics.api.orbit.ColorFlags;
 import dev.devce.rocketnautics.content.RocketDimensions;
+import dev.devce.rocketnautics.content.orbit.universe.builder.BiomeSamplingTextureBuilder;
 import dev.devce.rocketnautics.content.orbit.universe.builder.PlanetDefinitionBuilder;
 import dev.devce.rocketnautics.content.orbit.universe.builder.UniverseDefinitionBuilder;
-import dev.ryanhcode.sable.physics.config.dimension_physics.BezierResourceFunction;
+import dev.devce.rocketnautics.registry.RocketTags;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.level.Level;
-import org.hipparchus.geometry.euclidean.threed.Rotation;
+import net.neoforged.neoforge.common.Tags;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
 
 import java.util.EnumSet;
@@ -45,7 +48,7 @@ public final class StandardUniverseProvider {
         return new PlanetDefinitionBuilder("root", "sol")
                 .setMu(solMu)
                 .setStar(true)
-                .setTextureOverride(RocketNautics.path("textures/planet/sol.png"))
+                .setTextureFile(RocketNautics.path("textures/planet/sol.png"))
                 .setRadius(solRadius)
                 .setRotationPeriod(Vector3D.PLUS_J, overworldDaynightCycleLengthSeconds * 32d)
                 .setFixedPosition(Vector3D.ZERO)
@@ -57,6 +60,42 @@ public final class StandardUniverseProvider {
                 .setAccelerationAtSurface(11)
                 .setClouds(true)
                 .setParentIsShadowLightSource()
+                .setTextureDefinition(new BiomeSamplingTextureBuilder()
+                        .addMatchingTag(BiomeTags.IS_OCEAN, BiomeTags.IS_DEEP_OCEAN)
+                        .addFlag(ColorFlags.OCEAN)
+                        .buildEntryToColor(15, 45 ,135) // Curated deep royal blue
+                        .addMatchingTag(BiomeTags.IS_RIVER)
+                        .buildEntryToColor(25, 95, 215) // Vibrant blue
+                        .addMatchingTag(BiomeTags.IS_BEACH)
+                        .buildEntryToColor(225, 205, 155) // Warm sand
+                        .addMatchingTag(Tags.Biomes.IS_DESERT)
+                        .buildEntryToColor(215, 195, 115) // Golden sand
+                        .addMatchingTag(Tags.Biomes.IS_PLAINS)
+                        .buildEntryToColor(45, 145, 55) // Emerald green
+                        .addMatchingTag(BiomeTags.IS_FOREST)
+                        .buildEntryToColor(25, 105, 35) // Lush dark forest green
+                        .addMatchingTag(BiomeTags.IS_JUNGLE)
+                        .setPriority(1)
+                        .buildEntryToColor(15, 85, 25) // Deep jungle teal-green
+                        .addMatchingTag(BiomeTags.IS_TAIGA)
+                        .buildEntryToColor(30, 75, 55) // Cool pine green
+                        .addMatchingTag(BiomeTags.IS_SAVANNA)
+                        .buildEntryToColor(160, 140, 70)
+                        .addMatchingTag(Tags.Biomes.IS_SNOWY)
+                        .setPriority(10)
+                        .buildEntryToColor(240, 240, 245) // Pristine snow white
+                        .addMatchingTag(BiomeTags.IS_BADLANDS)
+                        .setPriority(10)
+                        .buildEntryToColor(195, 90, 40) // Terracotta orange
+                        .addMatchingTag(Tags.Biomes.IS_SWAMP)
+                        .buildEntryToColor(50, 70, 40)
+                        .addMatchingTag(Tags.Biomes.IS_WINDSWEPT)
+                        .buildEntryToColor(80, 100, 80)
+                        .addMatchingTag(Tags.Biomes.IS_MUSHROOM)
+                        .buildEntryToColor(100, 90, 100)
+                        .addMatchingTag(BiomeTags.IS_MOUNTAIN, Tags.Biomes.IS_STONY_SHORES)
+                        .buildEntryToColor(135, 135, 135)
+                        .build(30, 120, 40))
                 .setLinkedDimension(Level.OVERWORLD)
                 .setDimensionTransferHeight(20_000)
                 .addEntityDragPoint(4_000, 1, 0)
@@ -73,6 +112,16 @@ public final class StandardUniverseProvider {
         return new PlanetDefinitionBuilder("overworld", "moon")
                 .setShadowLightSource("sol")
                 .setAccelerationAtSurface(2)
+                .setTextureDefinition(new BiomeSamplingTextureBuilder()
+                        .addMatchingTag(RocketTags.BiomeTags.LUNAR_CHASM.tag)
+                        .setPriority(10)
+                        .buildEntryToColor(220, 150, 70)
+                        .addMatchingTag(RocketTags.BiomeTags.LUNAR_HIGHLANDS.tag)
+                        .buildEntryToColor(190, 190, 190)
+                        .addMatchingTag(RocketTags.BiomeTags.LUNAR_MARIA.tag)
+                        .addFlag(ColorFlags.OCEAN)
+                        .buildEntryToColor(90, 90, 90)
+                        .build(160, 160, 160))
                 .setLinkedDimension(RocketDimensions.MOON)
                 .setRenderUniverseInDimension(true)
                 .setDimensionDayTimeController("sol")
@@ -94,7 +143,7 @@ public final class StandardUniverseProvider {
                 .setRadius(overworldRadius * 0.53) // Mars is smaller than Earth
                 .setCircularOrbit((int) (overworldOrbitalYearInOverworldDays * 1.88) * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRotationPeriod(Vector3D.MINUS_J, 1230) // ~24.6 hours
-                .setTextureOverride(RocketNautics.path("textures/planet/mars.png"))
+                .setTextureFile(RocketNautics.path("textures/planet/mars.png"))
                 .setPriority(0);
     }
 
@@ -105,7 +154,7 @@ public final class StandardUniverseProvider {
                 .setRadius(overworldRadius * 4.2) // Jupiter is massive!
                 .setCircularOrbit(overworldOrbitalYearInOverworldDays * 4 * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRotationPeriod(Vector3D.MINUS_J, 500) // Spins very quickly
-                .setTextureOverride(RocketNautics.path("textures/planet/gas_giant.png"))
+                .setTextureFile(RocketNautics.path("textures/planet/gas_giant.png"))
                 .setPriority(0);
     }
 
@@ -116,7 +165,7 @@ public final class StandardUniverseProvider {
                 .setRadius(overworldRadius * 1.8) // Neptune-like
                 .setCircularOrbit(overworldOrbitalYearInOverworldDays * 8 * overworldDaynightCycleLengthSeconds, Vector3D.PLUS_J)
                 .setRotationPeriod(Vector3D.MINUS_J, 800)
-                .setTextureOverride(RocketNautics.path("textures/planet/ice_planet.png"))
+                .setTextureFile(RocketNautics.path("textures/planet/ice_planet.png"))
                 .setPriority(0);
     }
 }

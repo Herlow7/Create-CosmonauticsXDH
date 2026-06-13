@@ -10,14 +10,17 @@ import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetExtras;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
+import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.hipparchus.geometry.euclidean.threed.Rotation;
@@ -250,15 +253,17 @@ public class DeepSpaceHelper {
         return new Rotation(rot.w(), rot.x(), rot.y(), rot.z(), true);
     }
 
-    public static Pair<TimeStampedPVCoordinates, Rotation> localPositionToGlobalPositionAndRotation(Vector3dc localPosition, @Nullable Vector3dc localVelocity, CubePlanet planet, AbsoluteDate date) {
+    public static Pair<TimeStampedPVCoordinates, Rotation> localPositionToGlobalPositionAndRotation(Vector3dc localPosition, @Nullable Vector3dc localVelocity, Level level, CubePlanet planet, AbsoluteDate date) {
         Rotation rotation = planet.getRotationAtTime(date);
         rotation = rotation.compose(new Rotation(Vector3D.PLUS_J, Vector3D.PLUS_K), RotationConvention.VECTOR_OPERATOR);
-        Vector3d scaledPosition = localPosition.mul(planet.radius() / 30_000_000, new Vector3d());
-        Vector3D unrotatedPosition = new Vector3D(scaledPosition.x(), localPosition.y() + planet.radius(), scaledPosition.z());
+        double scaleFactor = planet.radius() * 2 / level.getWorldBorder().getSize();
+        Vector3d scaledPosition = localPosition
+                .sub(level.getWorldBorder().getCenterX(), -planet.radius(), level.getWorldBorder().getCenterZ(), new Vector3d())
+                .mul(scaleFactor, 1, scaleFactor);
         if (localVelocity != null && localVelocity.lengthSquared() < 1e-5) {
             localVelocity = new Vector3d(0, 1, 0);
         }
-        Vector3D actualPosition = rotation.applyTo(unrotatedPosition);
+        Vector3D actualPosition = rotation.applyTo(adapt(scaledPosition));
         Vector3D actualVelocity = Vector3D.ZERO;
         if (localVelocity != null) {
             actualVelocity = rotation.applyTo(adapt(localVelocity))
@@ -267,8 +272,76 @@ public class DeepSpaceHelper {
         return Pair.of(new TimeStampedPVCoordinates(date, actualPosition, actualVelocity), rotation);
     }
 
+    public static Pair<Vector3d, Quaterniond> globalPositionToLocalPositionAndRotation(TimeStampedPVCoordinates coordsInPlanetFrame, CubePlanet planet, Level planetLevel) {
+        Rotation planetRot = planet.getRotationAtTime(coordsInPlanetFrame.getDate());
+        if (planet.linkedDimension() == null) return Pair.of(new Vector3d(), new Quaterniond());
+        Vector3D correctedPos = planetRot.applyInverseTo(coordsInPlanetFrame.getPosition());
+        double ax = Math.abs(correctedPos.getX());
+        double ay = Math.abs(correctedPos.getY());
+        double az = Math.abs(correctedPos.getZ());
+        // at most one of these will be true
+        boolean xMajor = ax > ay && ax > az;
+        boolean zMajor = az > ax && az > ay;
+        boolean yMajor = ay > ax && ay > az;
+        Direction.Axis axis;
+        if (xMajor) {
+            axis = Direction.Axis.X;
+        } else if (zMajor) {
+            axis = Direction.Axis.Z;
+        } else if (yMajor) {
+            axis = Direction.Axis.Y;
+        } else {
+            return Pair.of(new Vector3d(0, planet.linkedDimension().transitionHeight(), 0), new Quaterniond());
+        }
+        Vector3D axi;
+        Vector3d destPos = (switch (axis) {
+            case X -> {
+                if (correctedPos.getX() > 0) {
+                    // pos y => neg z
+                    // pos z => neg x
+                    axi = Vector3D.PLUS_I;
+                    yield new Vector3d(-correctedPos.getZ(), ax, -correctedPos.getY());
+                } else {
+                    // pos y => neg z
+                    // pos z => pos x
+                    axi = Vector3D.MINUS_I;
+                    yield new Vector3d(correctedPos.getZ(), ax, -correctedPos.getY());
+                }
+            }
+            case Z -> {
+                if (correctedPos.getZ() > 0) {
+                    // pos y => neg z
+                    // pos x => pos x
+                    axi = Vector3D.PLUS_K;
+                    yield new Vector3d(correctedPos.getX(), az, -correctedPos.getY());
+                } else {
+                    // pos y => neg z
+                    // pos x => neg x
+                    axi = Vector3D.MINUS_K;
+                    yield new Vector3d(-correctedPos.getX(), az, -correctedPos.getY());
+                }
+            }
+            case Y -> {
+                if (correctedPos.getY() > 0) {
+                    axi = Vector3D.PLUS_J;
+                } else {
+                    axi = Vector3D.MINUS_J;
+                }
+                // pos x => pos x
+                // pos z => pos z
+                yield new Vector3d(correctedPos.getX(), ay, correctedPos.getZ());
+            }
+        });
+        double scaleFactor = 0.5 * planetLevel.getWorldBorder().getSize() / planet.radius();
+        destPos.mul(scaleFactor, 1, scaleFactor)
+                .add(planetLevel.getWorldBorder().getCenterX(), -planet.radius(), planetLevel.getWorldBorder().getCenterZ());
+        Quaterniond rot = DeepSpaceHelper.adapt(planetRot.compose(new Rotation(Vector3D.PLUS_J, axi), RotationConvention.VECTOR_OPERATOR)).conjugate();
+        return Pair.of(destPos, rot);
+    }
+
     @OnlyIn(Dist.CLIENT)
     public static boolean isDeepSpace() {
+        if (Minecraft.getInstance().level == null) return false;
         return Minecraft.getInstance().level.dimension() == RocketDimensions.DEEP_SPACE;
     }
 
