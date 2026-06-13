@@ -18,17 +18,15 @@ While Cube Planets can be linked to custom dimensions, we do not provide any too
 
 **`acceleration_at_surface`** (critical, paired with `mu`): the acceleration that physics objects are subject to at a distance of `radius` from the center of the cube planet.
 
-**`position`** (critical): A [Celestial Position](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Celestial-Positions)
+**`position`** (critical): A [Celestial Position](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Celestial-Positions). Cannot be partially overridden.
 
-**`rotation`** (critical): A [Celestial Rotation](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Celestial-Rotations)
+**`rotation`** (critical): A [Celestial Rotation](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Celestial-Rotations). Cannot be partially overridden.
 
 **`dimension_data`** (optional): A compound object consisting of [these fields](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Cube-Planets#Dimension-Data-Fields). Each field can be overridden separately.
 
 **`planet_extras`** (optional): A compound object consisting of [these fields](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Cube-Planets#Planet-Extras-Fields). Each field can be overridden separately.
 
-**`texture_override`** (optional): A resource location to a texture to use instead of generating the texture from biome data. Changing how the texture is generated from biome data is not yet supported.
-
-**`use_texture_override`** (optional, default `true`): Whether the `texture_override` should actually be used, if it is present.
+**`planet_texture`** (critical): A [Texture Definition](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Texture-Definition). Cannot be partially overridden.
 
 **`priority`** (optional, default `1000`): The priority of this file in the "priority override" phase. Must be an integer. Cube planets added by the base mod have a priority of 0.
 
