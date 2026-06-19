@@ -1,6 +1,7 @@
 package dev.devce.rocketnautics.client;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import dev.devce.rocketnautics.api.orbit.ColorPalette;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
@@ -17,10 +18,10 @@ public final class DeepSpaceTexture implements PreparedTexture {
         this.id = id;
     }
 
-    public static DeepSpaceTexture construct(int renderID, byte[] renderData) {
+    public static DeepSpaceTexture construct(int renderID, ColorPalette renderData) {
         Minecraft mc = Minecraft.getInstance();
 
-        NativeImage image = SkyHandler.composePlanetTexture(256, (x, y) -> renderData[x + y * 256]);
+        NativeImage image = SkyHandler.composePlanetTexture(renderData);
 
         DynamicTexture constructed = new DynamicTexture(image);
         ResourceLocation claimed = mc.getTextureManager().register("rocketnautics_deep_space_planet", constructed);

@@ -5,6 +5,10 @@
   "planet_extras": {
     "light_source_name": "sol"
   },
+  "planet_texture": {
+    "type": "resloc",
+    "texture": "rocketnautics:textures/planet/gas_giant.png"
+  },
   "position": {
     "type": "circular_orbit_period",
     "orbit_axis": {
@@ -24,7 +28,5 @@
       "y": -1.0,
       "z": 0.0
     }
-  },
-  "texture_override": "rocketnautics:textures/planet/gas_giant.png",
-  "use_texture_override": true
+  }
 }

@@ -10,11 +10,13 @@ import com.mojang.blaze3d.vertex.*;
 import dev.devce.rocketnautics.RocketConfig;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.SkyDataHandler;
-import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
+import dev.devce.rocketnautics.api.orbit.*;
 import dev.devce.rocketnautics.content.orbit.universe.PlanetExtras;
 import dev.devce.rocketnautics.network.PlanetMapRequestPayload;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import it.unimi.dsi.fastutil.ints.Int2FloatMap;
+import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
@@ -32,9 +34,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -86,7 +86,7 @@ public class SkyHandler {
         poseStack.mulPose(event.getModelViewMatrix());
         Camera camera = event.getCamera();
 
-        DeepSpaceHandler.renderUniverseForLevel(mc.level.dimension(), camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
+        DeepSpaceHandler.renderUniverseForLevel(mc.level, camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
 
         double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
         if (camY < 1000.0) return;
@@ -359,7 +359,7 @@ public class SkyHandler {
         }
     }
 
-    public static void updatePlanetTexture(int powerSize, int centerX, int centerZ, byte[] mapDataPosXPosZ, byte[] mapDataPosXNegZ, byte[] mapDataNegXPosZ, byte[] mapDataNegXNegZ) {
+    public static void updatePlanetTexture(int powerSize, int centerX, int centerZ, ColorPalette mapDataPosXPosZ, ColorPalette mapDataPosXNegZ, ColorPalette mapDataNegXPosZ, ColorPalette mapDataNegXNegZ) {
         PlanetRenderInfo updating = PLANET_TEXTURE_OBJ_LAST;
         PLANET_TEXTURE_OBJ_LAST = PLANET_TEXTURE_OBJ;
         PLANET_TEXTURE_OBJ = updating;
@@ -372,7 +372,7 @@ public class SkyHandler {
         mc.execute(() -> {
             if (PLANET_TEXTURE_OBJ == null) return;
 
-            NativeImage image = composePlanetTexture(512, (x, y) -> getBiomeAt(x, y, mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ));
+            NativeImage image = composePlanetTexture(new CompoundPaletteAccess(mapDataPosXPosZ, mapDataPosXNegZ, mapDataNegXPosZ, mapDataNegXNegZ));
 
             PLANET_TEXTURE_OBJ.getTexture().setPixels(image);
             PLANET_TEXTURE_OBJ.getTexture().upload();
@@ -382,19 +382,19 @@ public class SkyHandler {
         });
     }
 
-    public static NativeImage composePlanetTexture(int renderDataSize, RenderDataSelector selector) {
+    public static NativeImage composePlanetTexture(PaletteAccess palette) {
         int texSize = 1024;
         int virtualSize = 256; // virtual size for a gorgeous clean retro pixel art style
         int blockSize = texSize / virtualSize; // 4x4 blocks in the 1024x1024 texture
 
         NativeImage image = new NativeImage(texSize, texSize, false);
-        byte[] virtualBiomes = new byte[virtualSize * virtualSize];
+        ColorPalette.PaletteBuilder virtualPaletteBuilder = new ColorPalette.PaletteBuilder(palette.width(), palette.height(), 0);
 
         // Pass 1: Compute smoothed metaball-like biomes on the virtual grid
         for (int vy = 0; vy < virtualSize; vy++) {
             for (int vx = 0; vx < virtualSize; vx++) {
-                double u = (vx / (double)virtualSize) * renderDataSize;
-                double v = (vy / (double)virtualSize) * renderDataSize;
+                double u = (vx / (double)virtualSize) * palette.width();
+                double v = (vy / (double)virtualSize) * palette.height();
 
                 // Smooth wave distortion for organic borders
                 double nx = u * 0.1;
@@ -407,7 +407,7 @@ public class SkyHandler {
                 int cx = (int) Math.round(wu);
                 int cy = (int) Math.round(wv);
 
-                float[] influence = new float[PlanetColors.getReservedCount()];
+                Int2FloatOpenHashMap influence = new Int2FloatOpenHashMap();
                 double radius = 3.2;
                 double radiusSq = radius * radius;
 
@@ -415,8 +415,11 @@ public class SkyHandler {
                     for (int dy = -3; dy <= 3; dy++) {
                         int gx = cx + dx;
                         int gy = cy + dy;
-                        byte biome = selector.select(Mth.clamp(gx, 0, renderDataSize - 1), Mth.clamp(gy, 0, renderDataSize - 1));
-
+                        int color = palette.getColor(Mth.clamp(gx, 0, palette.width() - 1), Mth.clamp(gy, 0, palette.height() - 1));
+                        EnumSet<ColorFlags> flags = palette.getFlags(Mth.clamp(gx, 0, palette.width() - 1), Mth.clamp(gy, 0, palette.height() - 1));
+                        if (dx == 0 && dy == 0) {
+                            virtualPaletteBuilder.attachFlags(color, flags);
+                        }
                         double distX = wu - (gx + 0.5);
                         double distY = wv - (gy + 0.5);
                         double dSq = distX * distX + distY * distY;
@@ -428,45 +431,36 @@ public class SkyHandler {
                             double weight = term * term * term;
 
                             // Boost landmasses slightly for tighter shores
-                            if (!PlanetColors.isWater(biome)) {
-                                influence[biome] += (float) (weight * 1.1);
+                            if (!flags.contains(ColorFlags.OCEAN)) {
+                                influence.addTo(color, (float) (weight * 1.1));
                             } else {
-                                influence[biome] += (float) weight;
+                                influence.addTo(color, (float) weight);
                             }
                         }
                     }
                 }
-
-                int bestBiome = PlanetColors.FALLBACK;
-                float maxInfluence = -1;
-                for (int b = 0; b < PlanetColors.getReservedCount(); b++) {
-                    if (influence[b] > maxInfluence) {
-                        maxInfluence = influence[b];
-                        bestBiome = b;
-                    }
-                }
-                virtualBiomes[vx + vy * virtualSize] = (byte) bestBiome;
+                virtualPaletteBuilder.write(vx, vy, influence.int2FloatEntrySet().stream().max(Comparator.comparingDouble(Int2FloatMap.Entry::getFloatValue)).get().getIntKey());
             }
         }
+
+        ColorPalette virtualPalette = virtualPaletteBuilder.build();
 
         // Pass 2: Color, Shade, and Draw the 3D-embossed pixel art planet
         for (int vy = 0; vy < virtualSize; vy++) {
             for (int vx = 0; vx < virtualSize; vx++) {
-                byte colorIdx = virtualBiomes[vx + vy * virtualSize];
 
-                int[] unpacked = PlanetColors.getUnpackedColorARGB(colorIdx);
+                int[] unpacked = ColorPalette.unpackColorARGB(virtualPalette.getColor(vx, vy));
+                EnumSet<ColorFlags> flags = virtualPalette.getFlags(vx, vy);
                 int r = unpacked[1];
                 int g = unpacked[2];
                 int b = unpacked[3];
 
                 // Dynamic 3D pixel-art coastline shading
-                if (PlanetColors.isWater(colorIdx)) {
+                if (flags.contains(ColorFlags.OCEAN)) {
                     // Shadow cast ONTO water from top-left land
-                    int tlx = vx - 1;
-                    int tly = vy - 1;
-                    if (tlx >= 0 && tly >= 0) {
-                        byte neighborBiome = virtualBiomes[tlx + tly * virtualSize];
-                        if (!PlanetColors.isWater(neighborBiome)) {
+                    if (vx >= 1 && vy >= 1) {
+                        EnumSet<ColorFlags> neighborFlags = virtualPalette.getFlags(vx - 1, vy - 1);
+                        if (!neighborFlags.contains(ColorFlags.OCEAN)) {
                             r = (int) (r * 0.75);
                             g = (int) (g * 0.75);
                             b = (int) (b * 0.75);
@@ -474,11 +468,9 @@ public class SkyHandler {
                     }
                 } else {
                     // Border depth cast ONTO neighboring bottom-right water
-                    int brx = vx + 1;
-                    int bry = vy + 1;
-                    if (brx < virtualSize && bry < virtualSize) {
-                        byte neighborBiome = virtualBiomes[brx + bry * virtualSize];
-                        if (PlanetColors.isWater(neighborBiome)) {
+                    if (vx < virtualSize - 1 && vy < virtualSize - 1) {
+                        EnumSet<ColorFlags> neighborFlags = virtualPalette.getFlags(vx + 1, vy + 1);
+                        if (neighborFlags.contains(ColorFlags.OCEAN)) {
                             r = (int) (r * 0.85);
                             g = (int) (g * 0.85);
                             b = (int) (b * 0.85);
@@ -486,7 +478,7 @@ public class SkyHandler {
                     }
                 }
 
-                int color = (unpacked[0] << 24) | (b << 16) | (g << 8) | r;
+                int color = ColorPalette.packColor(unpacked[0], r, g, b);
                 for (int bx = 0; bx < blockSize; bx++) {
                     for (int by = 0; by < blockSize; by++) {
                         image.setPixelRGBA(vx * blockSize + bx, vy * blockSize + by, color);
@@ -720,24 +712,6 @@ public class SkyHandler {
         SONIC_BOOM_TEXTURE_ID = mc.getTextureManager().register("rocketnautics_sonic_boom", SONIC_BOOM_TEXTURE_OBJ);
         SONIC_BOOM_TEXTURE_OBJ.setFilter(false, false); // Keep it completely pixelated & crisp!
         image.close();
-    }
-
-    private static byte getBiomeAt(int gx, int gy, byte[] posPos, byte[] posNeg, byte[] negPos, byte[] negNeg) {
-        int dataSize = 256;
-        if (gx >= dataSize) {
-            int sx = gx - dataSize;
-            if (gy >= dataSize) {
-                return posPos[sx + (gy - dataSize) * dataSize];
-            } else {
-                return posNeg[sx + gy * dataSize];
-            }
-        } else {
-            if (gy >= dataSize) {
-                return negPos[gx + (gy - dataSize) * dataSize];
-            } else {
-                return negNeg[gx + gy * dataSize];
-            }
-        }
     }
 
     private static class Noise2D {

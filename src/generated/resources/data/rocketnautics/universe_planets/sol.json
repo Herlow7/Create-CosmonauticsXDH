@@ -5,6 +5,10 @@
   "planet_extras": {
     "is_star": true
   },
+  "planet_texture": {
+    "type": "resloc",
+    "texture": "rocketnautics:textures/planet/sol.png"
+  },
   "position": {
     "type": "fixed",
     "position": {
@@ -23,7 +27,5 @@
       "y": 1.0,
       "z": 0.0
     }
-  },
-  "texture_override": "rocketnautics:textures/planet/sol.png",
-  "use_texture_override": true
+  }
 }

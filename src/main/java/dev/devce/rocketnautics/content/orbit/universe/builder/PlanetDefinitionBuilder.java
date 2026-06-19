@@ -6,10 +6,7 @@ import dev.devce.rocketnautics.api.orbit.AllowedTransfer;
 import dev.devce.rocketnautics.api.orbit.AtmosphereFlags;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.api.orbit.FrameTree;
-import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
-import dev.devce.rocketnautics.content.orbit.universe.PlanetDimensionData;
-import dev.devce.rocketnautics.content.orbit.universe.PlanetExtras;
-import dev.devce.rocketnautics.content.orbit.universe.PointGravitySource;
+import dev.devce.rocketnautics.content.orbit.universe.*;
 import dev.ryanhcode.sable.physics.config.dimension_physics.BezierResourceFunction;
 import it.unimi.dsi.fastutil.ints.*;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -25,10 +22,10 @@ import org.orekit.utils.TimeStampedAngularCoordinates;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
 import java.util.EnumSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntFunction;
+import java.util.function.UnaryOperator;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class PlanetDefinitionBuilder {
@@ -42,8 +39,7 @@ public class PlanetDefinitionBuilder {
             SerializableRotation.CODEC.optionalFieldOf("rotation").forGetter(p -> p.rotation),
             SerializableDimensionData.CODEC.optionalFieldOf("dimension_data").forGetter(PlanetDefinitionBuilder::serializeDimensionData),
             SerializablePlanetExtras.CODEC.optionalFieldOf("planet_extras").forGetter(PlanetDefinitionBuilder::serializePlanetExtras),
-            ResourceLocation.CODEC.optionalFieldOf("texture_override").forGetter(p -> p.textureOverride),
-            Codec.BOOL.optionalFieldOf("use_texture_override").forGetter(p -> p.useTextureOverride),
+            DeepSpaceTextureDefinition.CODEC.optionalFieldOf("planet_texture").forGetter(p -> p.textureDefinition),
             Codec.INT.optionalFieldOf("priority", 1000).forGetter(p -> p.priority),
             Codec.BOOL.optionalFieldOf("disabled").forGetter(p -> p.disabled)
             ).apply(instance, PlanetDefinitionBuilder::new));
@@ -65,8 +61,7 @@ public class PlanetDefinitionBuilder {
     public final Optional<String> parent;
     public final @NotNull String name;
     public Optional<Double> radius = Optional.empty();
-    public Optional<Boolean> useTextureOverride = Optional.empty();
-    public Optional<ResourceLocation> textureOverride = Optional.empty();
+    public Optional<DeepSpaceTextureDefinition> textureDefinition = Optional.empty();
 
     public Optional<Double> mu = Optional.empty();
     public Optional<Double> accelerationAtSurface = Optional.empty();
@@ -89,7 +84,7 @@ public class PlanetDefinitionBuilder {
                                       Optional<Double> mu, Optional<Double> accelerationAtSurface,
                                       Optional<SerializablePosition> position, Optional<SerializableRotation> rotation,
                                       Optional<SerializableDimensionData> dimData, Optional<SerializablePlanetExtras> extras,
-                                      Optional<ResourceLocation> textureOverride, Optional<Boolean> useTextureOverride,
+                                      Optional<DeepSpaceTextureDefinition> textureDefinition,
                                       int priority, Optional<Boolean> disabled) {
         this.parent = parent;
         this.name = name;
@@ -117,8 +112,7 @@ public class PlanetDefinitionBuilder {
             this.lightSource = extras.get().lightSourceName();
             lightSource.ifPresent(dependencies::add);
         }
-        this.textureOverride = textureOverride;
-        this.useTextureOverride = useTextureOverride;
+        this.textureDefinition = textureDefinition;
         this.priority = priority;
         this.disabled = disabled;
     }
@@ -130,8 +124,7 @@ public class PlanetDefinitionBuilder {
                 resolve(this.position, other.position), resolve(this.rotation, other.rotation),
                 resolve(this.serializeDimensionData(), other.serializeDimensionData()),
                 resolve(this.serializePlanetExtras(), other.serializePlanetExtras()),
-                resolve(this.textureOverride, other.textureOverride),
-                resolve(this.useTextureOverride, other.useTextureOverride),
+                resolve(this.textureDefinition, other.textureDefinition),
                 this.priority, this.disabled
         );
     }
@@ -190,8 +183,11 @@ public class PlanetDefinitionBuilder {
                 throw new IllegalStateException("Builder has a nonpositive mu [" + mu + "]!");
             }
         }
-        if (textureOverride.isEmpty() && linkedDimension.isEmpty()) {
-            throw new IllegalStateException("Builder does not have a render option available!");
+        if (textureDefinition.isEmpty()) {
+            throw new IllegalStateException("Builder does not have a texture option configured!");
+        }
+        if (textureDefinition.get().type() == DeepSpaceTextureDefinition.Type.BIOME_SAMPLER && linkedDimension.isEmpty()) {
+            throw new IllegalStateException("Builder cannot sample biomes for texture with no linked dimension!");
         }
         double roi;
         PointGravitySource parentSource = destination.getGravitySource(parent, false);
@@ -201,7 +197,7 @@ public class PlanetDefinitionBuilder {
             roi = Double.POSITIVE_INFINITY;
         }
         destination.gravitySource(new PointGravitySource(ourFrame, mu, roi));
-        CubePlanet p = new CubePlanet(ourFrame, radius, angularCoordinates, constructDimensionData(destination), useTextureOverride.orElse(true) ? textureOverride.orElse(null) : null, constructExtras(destination));
+        CubePlanet p = new CubePlanet(ourFrame, radius, angularCoordinates, constructDimensionData(destination), textureDefinition.get(), constructExtras(destination));
         destination.cubePlanet(p);
         return p;
     }
@@ -263,9 +259,13 @@ public class PlanetDefinitionBuilder {
         return this;
     }
 
-    public PlanetDefinitionBuilder setTextureOverride(ResourceLocation textureAlternative) {
-        this.useTextureOverride = Optional.of(true);
-        this.textureOverride = Optional.ofNullable(textureAlternative);
+    public PlanetDefinitionBuilder setTextureFile(ResourceLocation location) {
+        this.textureDefinition = Optional.of(new DeepSpaceTextureDefinition.ResourceLocationDriven(location));
+        return this;
+    }
+
+    public PlanetDefinitionBuilder setTextureDefinition(DeepSpaceTextureDefinition definition) {
+        this.textureDefinition = Optional.of(definition);
         return this;
     }
 

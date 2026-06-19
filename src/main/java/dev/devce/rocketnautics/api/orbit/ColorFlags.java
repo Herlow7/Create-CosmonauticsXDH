@@ -8,15 +8,15 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Locale;
 
-public enum AtmosphereFlags implements StringRepresentable {
-    LOW_DENSITY, DROWNING;
-    public static final Codec<AtmosphereFlags> CODEC = StringRepresentable.fromEnum(AtmosphereFlags::values);
+public enum ColorFlags implements StringRepresentable {
+    OCEAN;
+    public static final Codec<ColorFlags> CODEC = StringRepresentable.fromEnum(ColorFlags::values);
 
-    public static EnumSet<AtmosphereFlags> empty() {
-        return EnumSet.noneOf(AtmosphereFlags.class);
+    public static EnumSet<ColorFlags> empty() {
+        return EnumSet.noneOf(ColorFlags.class);
     }
 
-    public static EnumSet<AtmosphereFlags> properCopy(Collection<AtmosphereFlags> collection) {
+    public static EnumSet<ColorFlags> properCopy(Collection<ColorFlags> collection) {
         if (collection.isEmpty()) return empty();
         return EnumSet.copyOf(collection);
     }
