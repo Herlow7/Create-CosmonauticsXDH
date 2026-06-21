@@ -53,3 +53,4 @@ compile_output.txt
 .eclipse
 .editorconfig
 **/.cache
+veil_src
