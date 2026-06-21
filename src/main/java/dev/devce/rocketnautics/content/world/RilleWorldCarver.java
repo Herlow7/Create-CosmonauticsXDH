@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 public class RilleWorldCarver extends WorldCarver<RilleCarverConfiguration> {
-    protected static final WorldgenRandom random = new WorldgenRandom(RandomSource.create(0));
+    protected static final ThreadLocal<WorldgenRandom> random = ThreadLocal.withInitial(() -> new WorldgenRandom(RandomSource.create(0)));
 
     protected final Map<RilleCarverConfiguration, LoadingCache<ChunkPos, ChunkData>> caches = new Object2ObjectOpenHashMap<>();
 
@@ -135,6 +135,7 @@ public class RilleWorldCarver extends WorldCarver<RilleCarverConfiguration> {
 
     protected RandomSource randomForChunk(RilleCarverConfiguration configuration, ChunkPos pos) {
         // TODO add the world seed to salt somehow
+        WorldgenRandom random = RilleWorldCarver.random.get();
         random.setLargeFeatureSeed(configuration.salt, pos.x, pos.z);
         return random.fork();
     }

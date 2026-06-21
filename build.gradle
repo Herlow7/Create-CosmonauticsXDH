@@ -6,6 +6,7 @@ plugins {
 configurations {
     shade
     implementation.extendsFrom(shade)
+    jarExtraction
 }
 
 repositories {
@@ -94,6 +95,21 @@ neoForge {
     }
 }
 
+tasks.register('extractInnerJar', Copy) {
+    // Take the downloaded outer JAR file and treat it as a zip tree
+    from {
+        configurations.jarExtraction.collect { zipTree(it) }
+    }
+    // Filter specifically for your nested JAR file
+    include "**/c2me-neoforge-opts-dfc-mc1.21.1-0.4.0-alpha.0.101.jar"
+
+    // Flatten the directory structure so it drops straight into our target folder
+    eachFile { path = name }
+    includeEmptyDirs = false
+
+    into layout.buildDirectory.dir("extracted-jars")
+}
+
 dependencies {
     
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}") { transitive = false }
@@ -112,6 +128,12 @@ dependencies {
     implementation("dev.simulated_team.simulated:simulated-neoforge-${minecraft_version}:${simulated_version}") { transitive = false }
     implementation("dev.eriksonn.aeronautics:aeronautics-neoforge-${minecraft_version}:${aeronautics_version}") { transitive = false }
     implementation("foundry.veil:veil-neoforge-${minecraft_version}:4.1.1")
+
+    runtimeOnly("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.101+1.21.1")
+    jarExtraction("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.101+1.21.1")
+    compileOnly fileTree(layout.buildDirectory.dir("extracted-jars")) {
+        builtBy(extractInnerJar)
+    }
     
     compileOnly("mezz.jei:jei-1.21.1-common-api:${jei_version}")
     compileOnly("mezz.jei:jei-1.21.1-neoforge-api:${jei_version}")

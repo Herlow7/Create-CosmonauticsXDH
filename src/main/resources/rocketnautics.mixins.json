@@ -3,10 +3,11 @@
   "minVersion": "0.8",
   "package": "dev.devce.rocketnautics.mixin",
   "compatibilityLevel": "JAVA_21",
+  "plugin": "dev.devce.rocketnautics.mixin.RocketMixinPlugin",
   "mixins": [
     "BacktankUtilMixin",
-    "CarvingContextMixin",
     "BucketItemAccessor",
+    "CarvingContextMixin",
     "DistanceManagerAccessor",
     "DivingHelmetItemMixin",
     "EntityMixin",
@@ -21,7 +22,8 @@
     "RapierFixedConstraintHandleMixin",
     "RapierFreeConstraintHandleMixin",
     "RapierGenericConstraintHandleMixin",
-    "RapierRotaryConstraintHandleMixin"
+    "RapierRotaryConstraintHandleMixin",
+    "compat.C2MEDensityFunctionFixer"
   ],
   "client": [
     "ClientLevelMixin",
