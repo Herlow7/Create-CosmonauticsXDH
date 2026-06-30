@@ -1,20 +1,20 @@
 package dev.devce.rocketnautics.content.blocks.separator;
 
 import com.mojang.serialization.MapCodec;
-import com.simibubi.create.content.kinetics.base.BlockBreakingKineticBlockEntity;
+import com.simibubi.create.AllItems;
+import com.simibubi.create.content.equipment.wrench.IWrenchable;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.block.IBE;
-import com.simibubi.create.foundation.utility.BlockHelper;
 import dev.devce.rocketnautics.registry.RocketBlockEntities;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -22,10 +22,16 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.pathfinder.PathComputationType;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
-import org.joml.Vector3f;
 
 import java.util.EnumMap;
+
+import static dev.devce.rocketnautics.content.blocks.separator.SeparatorBlock.LINK_SHAPE;
+import static dev.devce.rocketnautics.content.blocks.separator.SeparatorBlock.SHAPE;
 
 public class SeparatorShaftBlock extends DirectionalKineticBlock implements IBE<KineticBlockEntity>, ISeparatorChaining {
     public static final EnumMap<Direction, BooleanProperty> LINKS = SeparatorBlock.LINKS;
@@ -72,6 +78,7 @@ public class SeparatorShaftBlock extends DirectionalKineticBlock implements IBE<
         BlockState result = this.defaultBlockState().setValue(FACING, facing);
 
         for (Direction dir : Direction.values()) {
+            if (!shouldConnectTo(context.getLevel(), context.getClickedPos(), result, dir)) continue;
             BlockPos n = context.getClickedPos().relative(dir);
             BlockState neighbor = context.getLevel().getBlockState(n);
             if (neighbor.getBlock() instanceof ISeparatorChaining chaining) {
@@ -99,16 +106,29 @@ public class SeparatorShaftBlock extends DirectionalKineticBlock implements IBE<
     }
 
     @Override
-    public boolean shouldConnectTo(Level level, BlockPos pos, BlockState state, Direction connectionDirection) {
+    public boolean shouldConnectTo(BlockGetter level, BlockPos pos, BlockState state, Direction connectionDirection) {
         return state.getValue(FACING) != connectionDirection;
     }
 
     @Override
-    public void connectTo(Level level, BlockPos pos, BlockState state, Direction connectionDirection) {
+    public void connectTo(LevelAccessor level, BlockPos pos, BlockState state, Direction connectionDirection) {
         BooleanProperty prop = LINKS.get(connectionDirection);
         if (!state.getValue(prop)) {
             level.setBlock(pos, state.setValue(prop, true), 2);
         }
+    }
+
+    @Override
+    public void disconnect(LevelAccessor level, BlockPos pos, BlockState state, Direction connectionDirection) {
+        BooleanProperty prop = LINKS.get(connectionDirection);
+        if (state.getValue(prop)) {
+            level.setBlock(pos, state.setValue(prop, false), 2);
+        }
+    }
+
+    @Override
+    public boolean isConnected(LevelAccessor level, BlockPos pos, BlockState state, Direction connectionDirection) {
+        return state.getValue(LINKS.get(connectionDirection));
     }
 
     @Override
@@ -127,32 +147,32 @@ public class SeparatorShaftBlock extends DirectionalKineticBlock implements IBE<
         }
     }
 
-    public void triggerChainReaction(Level level, BlockPos pos) {
-        BlockState state = level.getBlockState(pos);
-        if (!(state.getBlock() instanceof ISeparatorChaining)) return;
+    @Override
+    public @NotNull VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        if (context.isHoldingItem(AllItems.WRENCH.asItem())) {
+            VoxelShape shape = SHAPE.get(state.getValue(FACING));
+            for (Direction dir : Direction.values()) {
+                BlockPos nPos = pos.relative(dir);
+                BlockState nState = level.getBlockState(nPos);
+                if (nState.getBlock() instanceof ISeparatorChaining chaining
+                        && chaining.shouldConnectTo(level, nPos, nState, dir.getOpposite()))
+                    shape = Shapes.or(shape, LINK_SHAPE.get(dir));
+            }
+            return shape;
+        } else {
+            return this.getCollisionShape(state, level, pos, context);
+        }
+    }
 
-        level.removeBlock(pos, false);
-        level.playSound(null, pos, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 5.0f, 1.5f + level.random.nextFloat());
-
-        if (level instanceof ServerLevel serverLevel) {
-            for (int i = 0; i < 5; i++) {
-                double px = pos.getX() + 0.5 + (level.random.nextDouble() - 0.5);
-                double py = pos.getY() + 0.5 + (level.random.nextDouble() - 0.5);
-                double pz = pos.getZ() + 0.5 + (level.random.nextDouble() - 0.5);
-                serverLevel.sendParticles(ParticleTypes.LARGE_SMOKE, px, py, pz, 1, 0, 0, 0, 0.05);
-                serverLevel.sendParticles(ParticleTypes.FLAME, px, py, pz, 1, 0, 0, 0, 0.02);
+    @Override
+    public @NotNull VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        VoxelShape shape = SHAPE.get(state.getValue(FACING));
+        for (Direction dir : Direction.values()) {
+            if (state.getValue(LINKS.get(dir))) {
+                shape = Shapes.or(shape, LINK_SHAPE.get(dir));
             }
         }
-
-        for (Direction direction : Direction.values()) {
-            if (state.getValue(FACING).getAxis().test(direction) || state.getValue(LINKS.get(direction))) {
-                BlockPos neighborPos = pos.relative(direction);
-                BlockState neighborState = level.getBlockState(neighborPos);
-                if (neighborState.getBlock() instanceof ISeparatorChaining sep) {
-                    sep.triggerChainReaction(level, neighborPos);
-                }
-            }
-        }
+        return shape;
     }
 
     @Override
@@ -178,5 +198,34 @@ public class SeparatorShaftBlock extends DirectionalKineticBlock implements IBE<
     @Override
     public Direction.Axis getRotationAxis(BlockState state) {
         return state.getValue(FACING).getAxis();
+    }
+
+    @Override
+    public InteractionResult onWrenched(BlockState state, UseOnContext context) {
+        for (Direction dir : Direction.values()) {
+            Vec3 location = context.getClickLocation().subtract(Vec3.atLowerCornerOf(context.getClickedPos()));
+            if (LINK_SHAPE.get(dir).closestPointTo(location).map(v -> v.distanceToSqr(location) < 1e-4).orElse(false)) {
+                Level level = context.getLevel();
+                BlockPos pos = context.getClickedPos();
+                boolean linked = state.getValue(LINKS.get(dir));
+                BlockPos relative = pos.relative(dir);
+                BlockState adjacent = level.getBlockState(relative);
+                if (adjacent.getBlock() instanceof ISeparatorChaining chaining) {
+                    if (linked || chaining.shouldConnectTo(level, relative, adjacent, dir.getOpposite())) {
+                        BlockState relinked = state.setValue(LINKS.get(dir), !linked);
+
+                        KineticBlockEntity.switchToBlockState(level, pos, updateAfterWrenched(relinked, context));
+
+                        if (level.getBlockState(pos) != state)
+                            IWrenchable.playRotateSound(level, pos);
+
+                        chaining.disconnect(level, relative, adjacent, dir.getOpposite());
+
+                        return InteractionResult.SUCCESS;
+                    }
+                }
+            }
+        }
+        return super.onWrenched(state, context);
     }
 }

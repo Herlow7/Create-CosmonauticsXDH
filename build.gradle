@@ -129,7 +129,6 @@ dependencies {
     implementation("dev.eriksonn.aeronautics:aeronautics-neoforge-${minecraft_version}:${aeronautics_version}") { transitive = false }
     implementation("foundry.veil:veil-neoforge-${minecraft_version}:4.1.1")
 
-    runtimeOnly("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.101+1.21.1")
     jarExtraction("maven.modrinth:c2me-neoforge:0.4.0-alpha.0.101+1.21.1")
     compileOnly fileTree(layout.buildDirectory.dir("extracted-jars")) {
         builtBy(extractInnerJar)

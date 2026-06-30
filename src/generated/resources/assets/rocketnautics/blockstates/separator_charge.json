@@ -2,57 +2,125 @@
   "multipart": [
     {
       "apply": {
-        "model": "rocketnautics:block/separator_charge",
+        "model": "rocketnautics:block/separator_charge_first",
         "x": 180
       },
       "when": {
+        "axis_along_first": "true",
         "facing": "down"
       }
     },
     {
       "apply": {
-        "model": "rocketnautics:block/separator_charge"
+        "model": "rocketnautics:block/separator_charge_second",
+        "x": 180
       },
       "when": {
+        "axis_along_first": "false",
+        "facing": "down"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/separator_charge_first"
+      },
+      "when": {
+        "axis_along_first": "true",
         "facing": "up"
       }
     },
     {
       "apply": {
-        "model": "rocketnautics:block/separator_charge",
+        "model": "rocketnautics:block/separator_charge_second"
+      },
+      "when": {
+        "axis_along_first": "false",
+        "facing": "up"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/separator_charge_first",
         "x": 90
       },
       "when": {
+        "axis_along_first": "true",
         "facing": "north"
       }
     },
     {
       "apply": {
-        "model": "rocketnautics:block/separator_charge",
+        "model": "rocketnautics:block/separator_charge_second",
+        "x": 90
+      },
+      "when": {
+        "axis_along_first": "false",
+        "facing": "north"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/separator_charge_first",
         "x": 90,
         "y": 180
       },
       "when": {
+        "axis_along_first": "true",
         "facing": "south"
       }
     },
     {
       "apply": {
-        "model": "rocketnautics:block/separator_charge",
+        "model": "rocketnautics:block/separator_charge_second",
+        "x": 90,
+        "y": 180
+      },
+      "when": {
+        "axis_along_first": "false",
+        "facing": "south"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/separator_charge_first",
         "x": 90,
         "y": 270
       },
       "when": {
+        "axis_along_first": "true",
         "facing": "west"
       }
     },
     {
       "apply": {
-        "model": "rocketnautics:block/separator_charge",
+        "model": "rocketnautics:block/separator_charge_second",
+        "x": 90,
+        "y": 270
+      },
+      "when": {
+        "axis_along_first": "false",
+        "facing": "west"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/separator_charge_first",
         "x": 90,
         "y": 90
       },
       "when": {
+        "axis_along_first": "true",
+        "facing": "east"
+      }
+    },
+    {
+      "apply": {
+        "model": "rocketnautics:block/separator_charge_second",
+        "x": 90,
+        "y": 90
+      },
+      "when": {
+        "axis_along_first": "false",
         "facing": "east"
       }
     },
@@ -61,7 +129,7 @@
         "model": "rocketnautics:block/separator_link_a"
       },
       "when": {
-        "facing": "down|up|west|east",
+        "facing": "down|up|north|west|east",
         "north": "true"
       }
     },
@@ -70,7 +138,7 @@
         "model": "rocketnautics:block/separator_link_b"
       },
       "when": {
-        "facing": "down|up|west|east",
+        "facing": "down|up|south|west|east",
         "south": "true"
       }
     },
@@ -81,7 +149,7 @@
       },
       "when": {
         "east": "true",
-        "facing": "down|up|north|south"
+        "facing": "down|up|north|south|east"
       }
     },
     {
@@ -90,7 +158,7 @@
         "y": 90
       },
       "when": {
-        "facing": "down|up|north|south",
+        "facing": "down|up|north|south|west",
         "west": "true"
       }
     },
@@ -101,7 +169,7 @@
         "y": 90
       },
       "when": {
-        "facing": "north|south|west|east",
+        "facing": "up|north|south|west|east",
         "up": "true"
       }
     },
@@ -113,7 +181,7 @@
       },
       "when": {
         "down": "true",
-        "facing": "north|south|west|east"
+        "facing": "down|north|south|west|east"
       }
     }
   ]
