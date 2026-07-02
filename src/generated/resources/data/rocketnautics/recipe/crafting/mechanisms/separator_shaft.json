@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "rocketnautics:separator"
+    },
+    {
+      "item": "create:shaft"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "rocketnautics:separator_shaft"
+  }
+}

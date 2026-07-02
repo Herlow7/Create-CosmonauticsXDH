@@ -130,9 +130,21 @@ public final class RocketStandardRecipeGen extends BaseRecipeProvider {
             .pattern("A")
             .pattern("B")
             .pattern("C")
-            .define('A', CommonMetal.IRON.plates)
+            .define('A', CommonMetal.ZINC.ingots)
             .define('B', Tags.Items.DUSTS_REDSTONE)
-            .define('C', CommonMetal.ZINC.ingots));
+            .define('C', CommonMetal.IRON.plates));
+
+    GeneratedRecipe SEPARATOR_CHARGE = create(RocketBlocks.SEPARATOR_CHARGE).unlockedByTag(() -> CommonMetal.ZINC.ingots).viaShaped(b -> b
+            .pattern("A")
+            .pattern("B")
+            .pattern("C")
+            .define('A', CommonMetal.ZINC.ingots)
+            .define('B', Tags.Items.DUSTS_REDSTONE)
+            .define('C', Tags.Items.GUNPOWDERS));
+
+    GeneratedRecipe SEPARATOR_SHAFT = create(RocketBlocks.SEPARATOR_SHAFT).unlockedByTag(() -> CommonMetal.ZINC.ingots).viaShapeless(b -> b
+            .requires(RocketBlocks.SEPARATOR)
+            .requires(AllBlocks.SHAFT));
 
     GeneratedRecipe RCS = create(RCS_THRUSTER).unlockedByTag(MetalTags.TITANIUM::ingots).viaShaped(b -> b
             .pattern("A")

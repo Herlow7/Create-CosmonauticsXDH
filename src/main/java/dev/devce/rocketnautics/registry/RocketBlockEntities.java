@@ -1,6 +1,12 @@
 package dev.devce.rocketnautics.registry;
 
+import com.simibubi.create.AllBlocks;
+import com.simibubi.create.api.behaviour.display.DisplaySource;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import com.simibubi.create.content.kinetics.base.ShaftRenderer;
+import com.simibubi.create.content.kinetics.base.SingleAxisRotatingVisual;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
+import com.tterrag.registrate.util.entry.RegistryEntry;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.client.render.HologramTableRenderer;
 import dev.devce.rocketnautics.client.render.VectorThrusterRenderer;
@@ -35,14 +41,21 @@ public class RocketBlockEntities {
             .validBlocks(RocketBlocks.RCS_THRUSTER)
             .register();
 
-    public static final com.tterrag.registrate.util.entry.RegistryEntry<com.simibubi.create.api.behaviour.display.DisplaySource, SputnikDisplaySource> SPUTNIK_DISPLAY_SOURCE = REGISTRATE
+    public static final BlockEntityEntry<KineticBlockEntity> SEPARATOR_SHAFT = REGISTRATE
+            .blockEntity("separator_shaft", KineticBlockEntity::new)
+            .visual(() -> SingleAxisRotatingVisual::shaft, false)
+            .validBlocks(RocketBlocks.SEPARATOR_SHAFT)
+            .renderer(() -> ShaftRenderer::new)
+            .register();
+
+    public static final RegistryEntry<DisplaySource, SputnikDisplaySource> SPUTNIK_DISPLAY_SOURCE = REGISTRATE
             .displaySource("sputnik", SputnikDisplaySource::new)
             .register();
 
     public static final BlockEntityEntry<SputnikBlockEntity> SPUTNIK = REGISTRATE
             .blockEntity("sputnik", SputnikBlockEntity::new)
             .validBlocks(RocketBlocks.SPUTNIK)
-            .onRegisterAfter(com.simibubi.create.api.registry.CreateRegistries.DISPLAY_SOURCE, type -> com.simibubi.create.api.behaviour.display.DisplaySource.BY_BLOCK_ENTITY.add(type, SPUTNIK_DISPLAY_SOURCE.get()))
+            .onRegisterAfter(com.simibubi.create.api.registry.CreateRegistries.DISPLAY_SOURCE, type -> DisplaySource.BY_BLOCK_ENTITY.add(type, SPUTNIK_DISPLAY_SOURCE.get()))
             .register();
 
     public static final BlockEntityEntry<HologramTableBlockEntity> HOLOGRAM_TABLE = REGISTRATE

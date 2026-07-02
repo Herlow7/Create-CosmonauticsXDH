@@ -34,6 +34,15 @@
     "type": "biome_sampler",
     "colors": [
       {
+        "blue": 245,
+        "green": 240,
+        "matching_tags": [
+          "c:is_snowy"
+        ],
+        "priority": 10,
+        "red": 240
+      },
+      {
         "blue": 40,
         "green": 90,
         "matching_tags": [
@@ -151,15 +160,6 @@
           "c:is_stony_shores"
         ],
         "red": 135
-      },
-      {
-        "blue": 245,
-        "green": 240,
-        "matching_tags": [
-          "c:is_snowy"
-        ],
-        "priority": 10,
-        "red": 240
       }
     ],
     "fallback_blue": 40,

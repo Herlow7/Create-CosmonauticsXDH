@@ -9,7 +9,7 @@
       "tag": "c:dusts/redstone"
     },
     "C": {
-      "tag": "c:plates/iron"
+      "tag": "c:gunpowders"
     }
   },
   "pattern": [
@@ -19,6 +19,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "rocketnautics:separator"
+    "id": "rocketnautics:separator_charge"
   }
 }
