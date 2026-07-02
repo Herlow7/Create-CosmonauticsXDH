@@ -830,6 +830,11 @@ public final class DeepSpaceHandler {
         
         return ((long)r << 24) | ((long)g << 16) | ((long)b << 8) | a;
     }
+
+    public static boolean shouldRenderPlanetBeneath(Level level) {
+        if (DeepSpaceHelper.isDeepSpace(level)) return false;
+        return UNIVERSE != null && UNIVERSE.getPlanetByDimension(level.dimension()) != null;
+    }
     
     public static void renderUniverseForLevel(Level level, Vec3 position, PoseStack poseStack, float partialDelta, float partialTick, Camera camera) {
         if (UNIVERSE == null || receivedUniverseDateTick == -1) return;

@@ -23,6 +23,7 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -79,23 +80,24 @@ public class SkyHandler {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_SKY) return;
         
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null || DeepSpaceHelper.isDeepSpace()) return;
+        Level level = event.getCamera().getEntity().level();
+        if (mc.level == null || mc.player == null || !DeepSpaceHandler.shouldRenderPlanetBeneath(level)) return;
 
         PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
         poseStack.mulPose(event.getModelViewMatrix());
         Camera camera = event.getCamera();
 
-        DeepSpaceHandler.renderUniverseForLevel(mc.level, camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
+        DeepSpaceHandler.renderUniverseForLevel(level, camera.getPosition(), event.getPoseStack(), event.getPartialTick().getGameTimeDeltaTicks(), event.getPartialTick().getGameTimeDeltaPartialTick(true), camera);
 
-        double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(mc.level.dimension());
+        double camY = camera.getPosition().y + SkyDataHandler.getHeightOffsetForLevel(level.dimension());
         if (camY < 1000.0) return;
 
         // Determine visibility based on altitude
         float visibility = (float) Mth.clamp((camY - 1000.0) / 500.0, 0.0, 1.0);
         if (visibility <= 0) return;
 
-        float celestialAngle = mc.level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
+        float celestialAngle = level.getTimeOfDay(event.getPartialTick().getGameTimeDeltaTicks());
         
         // Render custom high-fidelity space stars rotating naturally with the camera!
         renderSpaceStars(poseStack, visibility, camera, celestialAngle);
