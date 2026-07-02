@@ -35,6 +35,9 @@ public class EngineNozzleBlockEntity extends BlockEntity {
         if (level.getBlockEntity(mountPos) instanceof ThrusterMountBlockEntity mount) {
             isThrusting = mount.isThrusting;
             heatModifier = mount.getHeatModifier();
+            float maxLimit = 200 * mount.getThrustModifier();
+            float throttle = maxLimit > 0 ? (mount.thrustLimit.getValue() / maxLimit) : 0f;
+            heatModifier *= throttle;
         }
 
         if (isThrusting) {
