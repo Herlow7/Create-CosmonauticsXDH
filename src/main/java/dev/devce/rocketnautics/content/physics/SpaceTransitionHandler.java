@@ -80,6 +80,7 @@ public class SpaceTransitionHandler {
                     CubePlanet linked = instance.getUniverse().getPlanetByDimension(level.dimension());
                     if (linked != null && linked.linkedDimension() != null && linked.linkedDimension().allowedTransfer().allowToSpace() && linked.linkedDimension().transitionHeight() < pos.y()) {
                         RigidBodyHandle handle = physicsSystem.getPhysicsHandle(ship);
+                        if (!handle.isValid()) continue;
                         double captureSize = ship.boundingBox().size().length();
                         DeepSpaceInstance claimed = instance.claimNewInstance((int) (captureSize / 8 + 2));
                         Quaterniond rotation = initInstance(claimed, ship.logicalPose().position(), handle.getLinearVelocity(new Vector3d()), linked, level);

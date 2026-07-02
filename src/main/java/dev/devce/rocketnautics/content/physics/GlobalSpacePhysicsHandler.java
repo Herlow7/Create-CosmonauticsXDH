@@ -96,7 +96,7 @@ public class GlobalSpacePhysicsHandler {
             for (SubLevel subLevel : container.getAllSubLevels()) {
                 if (subLevel instanceof ServerSubLevel serverSubLevel) {
                     RigidBodyHandle handle = physicsSystem.getPhysicsHandle(serverSubLevel);
-                    if (handle != null) {
+                    if (handle != null && handle.isValid()) {
                         processSubLevelPhysics(serverSubLevel, handle, level, timeStep);
                     }
                 }
