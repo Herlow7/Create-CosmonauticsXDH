@@ -2,14 +2,14 @@
 
 package dev.devce.rocketnautics.content.physics;
 
-import com.google.common.collect.Lists;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceData;
 import dev.devce.rocketnautics.content.orbit.DeepSpaceInstance;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
-import dev.devce.rocketnautics.mixin.DistanceManagerAccessor;
+import dev.devce.rocketnautics.mixin.SubLevelHoldingChunkAccessor;
+import dev.devce.rocketnautics.mixin.SubLevelHoldingChunkMapAccessor;
 import dev.devce.rocketnautics.network.SeamlessTransitionPayload;
 import dev.egg.SubLevelWarper;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
@@ -18,14 +18,14 @@ import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.platform.SableEventPlatform;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
-import dev.ryanhcode.sable.sublevel.storage.holding.SubLevelHoldingChunkMap;
+import dev.ryanhcode.sable.sublevel.storage.HoldingSubLevel;
+import dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer;
+import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.TicketType;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
@@ -36,6 +36,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.*;
+import org.jspecify.annotations.Nullable;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
@@ -117,7 +118,11 @@ public class SpaceTransitionHandler {
         dest.left().setComponent(1, targetHeight);
         // Handle all players in the instance
         Map<ServerPlayer, UUID> riding = new Object2ObjectOpenHashMap<>();
-        for (ServerPlayer pl : deepSpace.getPlayers(pl -> instance.boundingBox().contains(pl.position()))) {
+        List<ServerPlayer> players = new ObjectArrayList<>();
+        instance.collectOnlinePlayers(server, players::add);
+        // since we teleport the player and thus remove it from the list of server players,
+        // we have to collect and then teleport in different stages to avoid a CME
+        for (ServerPlayer pl : players) {
             PacketDistributor.sendToPlayer(pl, new SeamlessTransitionPayload(true));
             if (pl.isPassenger()) {
                 riding.put(pl, pl.getVehicle().getUUID());
@@ -126,46 +131,75 @@ public class SpaceTransitionHandler {
             Vector3f o = dest.right().transform(offset.toVector3f());
             pl.teleportTo(destLevel, dest.left().x() + o.x(), dest.left().y() + o.y(), dest.left().z() + o.z(), pl.getYRot(), pl.getXRot());
         }
-        // Handle ships currently in the instance
-        List<ChunkPos> unloaded = instance.interiorPositions().filter(cPos -> !deepSpace.hasChunk(cPos.x, cPos.z)).toList();
-        Set<UUID> seen = new ObjectOpenHashSet<>();
-        if (unloaded.size() != instance.getChunkSideLength() * instance.getChunkSideLength()) {
-            exitLoadedFromDeepSpace(instance, deepSpace, dest.right(), destLevel, dest.left(), seen);
+        for (var entry : instance.getOfflinePlayers().entrySet()) {
+            Vec3 offset = entry.getValue().subtract(instance.boundingBox().getCenter());
+            Vector3f o = dest.right().transform(offset.toVector3f());
+            instance.getManager().trackOfflinePlayerTeleport(entry.getKey(), destLevel.dimension(), new Vec3(dest.left().x() + o.x(), dest.left().y() + o.y(), dest.left().z() + o.z()));
         }
+        // Handle ships currently in the instance
+        Deque<Pair<UUID, @Nullable GlobalSavedSubLevelPointer>> unprocessed = new ArrayDeque<>();
+        instance.collectLoadedSublevels(server, l -> unprocessed.addLast(Pair.of(l.getUniqueId(), null)));
+        exitLoadedFromDeepSpace(instance, deepSpace, dest.right(), destLevel, dest.left(), unprocessed);
         // whatever the player was riding was absolutely loaded
         riding.forEach((pl, e) -> pl.startRiding(destLevel.getEntity(e), true));
-        if (unloaded.isEmpty()) {
+
+        unprocessed.clear();
+        // remap into a deque since we do a lot of iterating and removal, but no searching.
+        instance.getUnloadedSublevels().entrySet().stream().map(e -> Pair.of(e.getKey(), e.getValue().orElse(null)))
+                .forEach(unprocessed::add);
+        if (unprocessed.isEmpty()) {
             afterFinished.run();
             return;
         }
-        // dispatch a task to handle parts of the instance that were unloaded at a restricted rate
-        List<List<ChunkPos>> partitions = Lists.partition(unloaded, CHUNK_LOADING_PARTITION_SIZES);
-        for (List<ChunkPos> part : partitions) {
+        // rephrase into tick tasks since we need to load the unloaded sublevels from disk, which is expensive.
+        for (int i = 0; i < unprocessed.size(); i++) {
             TICK_TASKS.addLast(() -> {
-                SubLevelHoldingChunkMap map = SubLevelContainer.getContainer(deepSpace).getHoldingChunkMap();
-                part.forEach(cPos -> {
-                    deepSpace.getChunkSource().chunkMap.getDistanceManager().addRegionTicket(TicketType.UNKNOWN, cPos, 1, cPos);
-                    map.updateChunkStatus(cPos, true);
-                });
-                ((DistanceManagerAccessor) deepSpace.getChunkSource().chunkMap.getDistanceManager()).rocketnautics$tickingTicketsTracker().runAllUpdates();
-                map.processChanges();
-                exitLoadedFromDeepSpace(instance, deepSpace, dest.right(), destLevel, dest.left(), seen);
-                part.forEach(cPos -> {
-                    map.updateChunkStatus(cPos, false);
-                });
+                if (unprocessed.isEmpty()) return;
+                while (true) {
+                    var next = unprocessed.peekFirst();
+                    if (next == null) break;
+                    ServerSubLevelContainer container = SubLevelContainer.getContainer(deepSpace);
+                    assert container != null;
+                    if (next.value() != null) {
+                        // snatch the unloaded sublevels and teleport them
+                        container.getHoldingChunkMap().snatchAndLoad(next.value(), next.key());
+                        exitLoadedFromDeepSpace(instance, deepSpace, dest.right(), destLevel, dest.left(), unprocessed);
+                        // exitLoaded most likely popped the snatched sublevel, but it's not a guarantee
+                        if (unprocessed.peekFirst() == next) {
+                            unprocessed.removeFirst();
+                        }
+                        break;
+                        // check if the sublevel is in a pseudoloaded state
+                    } else if (container.getHoldingChunkMap().getHoldingSubLevel(next.key()) != null) {
+                        // snatch from the holding chunk that is holding this sublevel
+                        ((SubLevelHoldingChunkMapAccessor) container.getHoldingChunkMap()).rocketnautics$getHoldingChunks()
+                                .values().stream().filter(c -> ((SubLevelHoldingChunkAccessor) c).rocketnautics$getHolding().containsKey(next.key()))
+                                .forEach(c -> container.getHoldingChunkMap().snatchAndLoad(new GlobalSavedSubLevelPointer(c.getChunkPos(), (short) 0, (short) 0), next.key()));
+                        exitLoadedFromDeepSpace(instance, deepSpace, dest.right(), destLevel, dest.left(), unprocessed);
+                        // exitLoaded most likely popped the snatched sublevel, but it's not a guarantee
+                        if (unprocessed.peekFirst() == next) {
+                            unprocessed.removeFirst();
+                        }
+                        break;
+                    }
+                    unprocessed.removeFirst();
+                }
             });
         }
         TICK_TASKS.addLast(afterFinished);
     }
 
-    private static void exitLoadedFromDeepSpace(DeepSpaceInstance instance, ServerLevel deepSpace, Quaterniond rot, ServerLevel destLevel, Vector3d destPos, Set<UUID> seen) {
+    private static void exitLoadedFromDeepSpace(DeepSpaceInstance instance, ServerLevel deepSpace, Quaterniond rot, ServerLevel destLevel, Vector3d destPos, Iterable<Pair<UUID, GlobalSavedSubLevelPointer>> unprocessed) {
         ServerSubLevelContainer container = SubLevelContainer.getContainer(deepSpace);
         if (container != null) {
-            List<UUID> shipIds = container.getAllSubLevels().stream()
-                    .map(SubLevel::getUniqueId).filter(seen::add).toList();
-            for (UUID id : shipIds) {
+            for (Iterator<Pair<UUID, GlobalSavedSubLevelPointer>> iterator = unprocessed.iterator(); iterator.hasNext(); ) {
+                UUID id = iterator.next().key();
                 SubLevel sl = container.getSubLevel(id);
-                if (!(sl instanceof ServerSubLevel ship) || ship.isRemoved()) continue;
+                if (sl == null) continue;
+                if (!(sl instanceof ServerSubLevel ship) || ship.isRemoved()) {
+                    iterator.remove();
+                    continue;
+                }
                 Vector3d pos = ship.logicalPose().position();
                 if (instance.boundingBox().contains(pos.x(), pos.y(), pos.z())) {
                     Vector3d offset = pos.sub(instance.getCenter(), new Vector3d());
@@ -175,6 +209,7 @@ public class SpaceTransitionHandler {
                     WARP_ENTITY_DETECTION_TOLERANCE = 0;
                     PREMUL_ROTATION = null;
                 }
+                iterator.remove();
             }
         }
     }

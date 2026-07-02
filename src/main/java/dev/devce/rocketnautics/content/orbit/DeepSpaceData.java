@@ -1,5 +1,8 @@
 package dev.devce.rocketnautics.content.orbit;
 
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.UnboundedMapCodec;
 import dev.devce.rocketnautics.RocketNautics;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.RocketDimensions;
@@ -7,15 +10,25 @@ import dev.devce.rocketnautics.content.orbit.universe.UniverseDefinition;
 import dev.devce.rocketnautics.content.orbit.universe.UniverseLoader;
 import dev.devce.rocketnautics.network.UniverseDefinitionPayload;
 import dev.devce.rocketnautics.network.UniverseTimeSyncPayload;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.api.sublevel.SubLevelObserver;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
@@ -32,11 +45,21 @@ import org.jetbrains.annotations.Nullable;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
+import java.util.Map;
+import java.util.UUID;
+
 @EventBusSubscriber(modid = RocketNautics.MODID)
-public class DeepSpaceData extends SavedData {
+public class DeepSpaceData extends SavedData implements SubLevelObserver {
     public static final int LOGICAL_INSTANCE_HEIGHT = 1000;
 
     public static final String ID = "cosmonautics_deep_space_data";
+
+    protected boolean observing = false;
+
+    protected static final UnboundedMapCodec<UUID, Pair<ResourceKey<Level>, Vec3>> TELEPORTS_CODEC = Codec.unboundedMap(UUIDUtil.CODEC, Codec.pair(Level.RESOURCE_KEY_CODEC, Vec3.CODEC));
+    protected final Map<UUID, Pair<ResourceKey<Level>, Vec3>> offlinePlayerTeleports = new Object2ObjectOpenHashMap<>();
+
+    protected final Map<UUID, DeepSpaceInstance> knownSublevelAssociations = new Object2ObjectOpenHashMap<>();
 
     public static boolean tooSoon(MinecraftServer server) {
         return server.getLevel(RocketDimensions.DEEP_SPACE) == null;
@@ -45,6 +68,10 @@ public class DeepSpaceData extends SavedData {
     public static DeepSpaceData getInstance(MinecraftServer server) {
         ServerLevel deepSpace = server.getLevel(RocketDimensions.DEEP_SPACE);
         DeepSpaceData data = deepSpace.getChunkSource().getDataStorage().computeIfAbsent(new Factory<>(DeepSpaceData::new, DeepSpaceData::load, null), ID);
+        if (!data.observing) {
+            SubLevelContainer.getContainer(deepSpace).addObserver(data);
+            data.observing = true;
+        }
         return data;
     }
 
@@ -54,9 +81,30 @@ public class DeepSpaceData extends SavedData {
     }
 
     @SubscribeEvent
-    public static void syncUniverse(PlayerEvent.PlayerLoggedInEvent event) {
+    public static void handlePlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer splayer)) return;
         PacketDistributor.sendToPlayer(splayer, new UniverseDefinitionPayload(getInstance(splayer.server).getUniverse()));
+        DeepSpaceData data = getInstance(event.getEntity().getServer());
+        if (data.offlinePlayerTeleports.containsKey(event.getEntity().getUUID())) {
+            var pair = data.offlinePlayerTeleports.get(event.getEntity().getUUID());
+            ServerLevel dest = event.getEntity().getServer().getLevel(pair.getFirst());
+            if (dest != null) {
+                ((ServerPlayer) event.getEntity()).teleportTo(dest, pair.getSecond().x(), pair.getSecond().y(), pair.getSecond().z(), event.getEntity().getYRot(), event.getEntity().getXRot());
+            }
+        } else {
+            DeepSpaceInstance instance = data.getInstanceForPos(event.getEntity().getBlockX(), event.getEntity().getBlockZ());
+            if (instance != null) {
+                instance.stopTrackingOfflinePlayer(event.getEntity());
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void handlePlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        DeepSpaceInstance instance = getInstance(event.getEntity().getServer()).getInstanceForPos(event.getEntity().getBlockX(), event.getEntity().getBlockZ());
+        if (instance != null) {
+            instance.trackOfflinePlayer(event.getEntity());
+        }
     }
 
     // end static //
@@ -74,20 +122,28 @@ public class DeepSpaceData extends SavedData {
         universeTicks += 1;
         instances.values().forEach(i -> i.tick(server));
         setDirty();
-        if (server.tickRateManager().tickrate() != lastTickRate || shouldSendRegularPackets(1)) {
+        if (server.tickRateManager().tickrate() != lastTickRate || realtimeClock(1)) {
             lastTickRate = server.tickRateManager().tickrate();
             PacketDistributor.sendToAllPlayers(new UniverseTimeSyncPayload(universeTicks, lastTickRate));
         }
     }
 
-    public boolean shouldSendRegularPackets(int secondsPerPacket) {
-        return universeTicks % (int) lastTickRate * secondsPerPacket == 0;
+    public boolean realtimeClock(int secondsPer) {
+        return realtimeClock(secondsPer, 0);
+    }
+
+    public boolean realtimeClock(int secondsPer, int tickOffset) {
+        return universeTicks % (int) (lastTickRate * secondsPer) == tickOffset;
     }
 
     private void debugInstance() {
         // execute in rocketnautics:deep_space run tp Dev 48 1016 16
         DeepSpaceInstance instance = claimNewInstance(2);
         instance.getPosition().init(universe, "overworld", new TimeStampedPVCoordinates(DeepSpaceHelper.EPOCH, new Vector3D(0, 0, 9_000_000D), new Vector3D(0, 3_300, 0)));
+    }
+
+    public void trackOfflinePlayerTeleport(UUID id, ResourceKey<Level> destinationLevel, Vec3 destinationPos) {
+        offlinePlayerTeleports.put(id, Pair.of(destinationLevel, destinationPos));
     }
 
     public DeepSpaceInstance claimNewInstance(int chunkSize) {
@@ -152,6 +208,23 @@ public class DeepSpaceData extends SavedData {
     }
 
     @Override
+    public void onSubLevelAdded(SubLevel subLevel) {
+        DeepSpaceInstance instance = getInstanceForPos((int) subLevel.logicalPose().position().x(), (int) subLevel.logicalPose().position().z());
+        if (instance != null) instance.stopTrackingSublevel(subLevel);
+    }
+
+    @Override
+    public void onSubLevelRemoved(SubLevel subLevel, SubLevelRemovalReason reason) {
+        if (!(subLevel instanceof ServerSubLevel)) return;
+        DeepSpaceInstance instance = getInstanceForPos((int) subLevel.logicalPose().position().x(), (int) subLevel.logicalPose().position().z());
+        if (instance == null) return;
+        switch (reason) {
+            case UNLOADED -> instance.trackUnloadingSublevel((ServerSubLevel) subLevel);
+            case REMOVED -> instance.stopTrackingSublevel(subLevel);
+        }
+    }
+
+    @Override
     public @NotNull CompoundTag save(CompoundTag compoundTag, HolderLookup.Provider provider) {
         compoundTag.putLong("UniverseTicks", universeTicks);
         compoundTag.putInt("NextID", nextFreeID);
@@ -160,6 +233,10 @@ public class DeepSpaceData extends SavedData {
             list.add(instanceList.write());
         }
         compoundTag.put("InstanceLists", list);
+        Tag teleports = DeepSpaceHelper.write(TELEPORTS_CODEC, offlinePlayerTeleports);
+        if (teleports != null) {
+            compoundTag.put("PendingTeleports", teleports);
+        }
         return compoundTag;
     }
 
@@ -172,10 +249,10 @@ public class DeepSpaceData extends SavedData {
             InstanceList instance = new InstanceList(data, list.getCompound(i));
             data.instances.put(instance.getChunkPowerSize(), instance);
         }
+        data.offlinePlayerTeleports.putAll(DeepSpaceHelper.read(TELEPORTS_CODEC, tag.get("PendingTeleports"), Map.of()));
         return data;
     }
 
-    // TODO mixin to CollisionGetter#borderCollision and Entity#collectColliders to add this
     // collision box at the same place the world border's collision box is added.
     public static VoxelShape getColliderForPosition(Vec3 position) {
         // subtract the instance bounds from the infinity box

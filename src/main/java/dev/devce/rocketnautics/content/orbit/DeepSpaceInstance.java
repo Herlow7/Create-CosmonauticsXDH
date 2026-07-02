@@ -1,5 +1,6 @@
 package dev.devce.rocketnautics.content.orbit;
 
+import com.mojang.serialization.Codec;
 import dev.devce.rocketnautics.api.orbit.DeepSpaceHelper;
 import dev.devce.rocketnautics.content.RocketDimensions;
 import dev.devce.rocketnautics.content.orbit.universe.CubePlanet;
@@ -7,27 +8,34 @@ import dev.devce.rocketnautics.content.orbit.universe.DeepSpacePosition;
 import dev.devce.rocketnautics.content.physics.SpaceTransitionHandler;
 import dev.devce.rocketnautics.network.DebugLogPayload;
 import dev.devce.rocketnautics.network.DeepSpacePositionPayload;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
+import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.sublevel.storage.holding.GlobalSavedSubLevelPointer;
 import it.unimi.dsi.fastutil.doubles.DoubleObjectPair;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import net.minecraft.core.Direction;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ExtraCodecs;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
-import org.hipparchus.geometry.euclidean.threed.Rotation;
 import org.hipparchus.geometry.euclidean.threed.Vector3D;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.joml.Vector3dc;
 import org.orekit.time.AbsoluteDate;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -45,8 +53,12 @@ public final class DeepSpaceInstance {
 
     private CubePlanet lastOrbiting;
 
-    private final Set<UUID> knownSublevels = new ObjectOpenHashSet<>();
     private final Map<UUID, DoubleObjectPair<Vector3d>> pendingPhysics = new Object2ObjectOpenHashMap<>();
+
+    private static final Codec<Map<UUID, Optional<GlobalSavedSubLevelPointer>>> UNLOADED_SUBLEVEL_CODEC = Codec.unboundedMap(UUIDUtil.CODEC, ExtraCodecs.optionalEmptyMap(GlobalSavedSubLevelPointer.CODEC));
+    private final Map<UUID, Optional<GlobalSavedSubLevelPointer>> unloadedSublevels = new Object2ObjectOpenHashMap<>();
+    private static final Codec<Map<UUID, Vec3>> OFFLINE_PLAYER_CODEC = Codec.unboundedMap(UUIDUtil.CODEC, Vec3.CODEC);
+    private final Map<UUID, Vec3> offlinePlayers = new Object2ObjectOpenHashMap<>();
 
     private boolean isProcessingRetirement = false;
 
@@ -59,6 +71,11 @@ public final class DeepSpaceInstance {
         this.id = id;
         this.position.setLocalUniverseTicks(manager.getUniverseTicks());
         this.boundingBox = buildBoundingBox();
+
+    }
+
+    private AABB buildBoundingBox() {
+        return new AABB(getNegXCorner(), DeepSpaceData.LOGICAL_INSTANCE_HEIGHT, getNegZCorner(), getNegXCorner() + getSideLength() + 1, DeepSpaceData.LOGICAL_INSTANCE_HEIGHT + getSideLength() + 1, getNegZCorner() + getSideLength() + 1);
     }
 
     public DeepSpaceInstance(DeepSpaceData manager, CompoundTag tag) {
@@ -68,11 +85,9 @@ public final class DeepSpaceInstance {
         this.id = tag.getLong("Id");
         this.position.setLocalUniverseTicks(tag.getLong("LocalTicks"));
         this.position.init(manager.getUniverse(), tag.getString("Frame"), DeepSpaceHelper.read(DeepSpaceHelper.STAMPED_PVCOORDS_CODEC, tag.get("Coords")));
+        this.unloadedSublevels.putAll(DeepSpaceHelper.read(UNLOADED_SUBLEVEL_CODEC, tag.get("TrackedSublevels"), Map.of()));
+        this.offlinePlayers.putAll(DeepSpaceHelper.read(OFFLINE_PLAYER_CODEC, tag.get("TrackedPlayers"), Map.of()));
         this.boundingBox = buildBoundingBox();
-    }
-
-    private AABB buildBoundingBox() {
-        return new AABB(getNegXCorner(), DeepSpaceData.LOGICAL_INSTANCE_HEIGHT, getNegZCorner(), getNegXCorner() + getSideLength(), DeepSpaceData.LOGICAL_INSTANCE_HEIGHT + getSideLength(), getNegZCorner() + getSideLength());
     }
 
     // cannot be codec-driven due to the need for the DeepSpaceData object during deserialization.
@@ -85,6 +100,10 @@ public final class DeepSpaceInstance {
         tag.putString("Frame", position.getOrbit().getFrame().getName());
         Tag c = DeepSpaceHelper.write(DeepSpaceHelper.STAMPED_PVCOORDS_CODEC, position.getOrbit().getPVCoordinates());
         if (c != null) tag.put("Coords", c);
+        c = DeepSpaceHelper.write(UNLOADED_SUBLEVEL_CODEC, unloadedSublevels);
+        if (c != null) tag.put("TrackedSublevels", c);
+        c = DeepSpaceHelper.write(OFFLINE_PLAYER_CODEC, offlinePlayers);
+        if (c != null) tag.put("TrackedPlayers", c);
         return tag;
     }
 
@@ -150,7 +169,7 @@ public final class DeepSpaceInstance {
         // update position
         position.propagate(manager.getUniverse());
         // handle render data
-        if (forceClientSync || manager.shouldSendRegularPackets(1)) {
+        if (forceClientSync || manager.realtimeClock(1)) {
             forceClientSync = false;
             ServerLevel deepSpace = server.getLevel(RocketDimensions.DEEP_SPACE);
             List<ServerPlayer> players = deepSpace.getPlayers(p -> boundingBox().contains(p.position()));
@@ -159,7 +178,7 @@ public final class DeepSpaceInstance {
                 PacketDistributor.sendToPlayer(player, DeepSpacePositionPayload.of(position, manager.getUniverse()), new DebugLogPayload("Recent acceleration: " + velChange, 0xFFFFFF));
             }
         }
-        // check for planetary intersection (this should be last)
+        // check for planetary intersection
         if (lastOrbiting == null || lastOrbiting.orekitFrame() != getPosition().getFrame()) {
             OptionalInt id = getManager().getUniverse().getIDByFrameName(getPosition().getFrame().getName());
             if (id.isPresent()) {
@@ -180,15 +199,23 @@ public final class DeepSpaceInstance {
             double dz = Math.max(0, az - lastOrbiting.radius());
             double d2 = dx * dx + dy * dy + dz * dz;
             if (d2 < lastOrbiting.linkedDimension().transitionHeight() * lastOrbiting.linkedDimension().transitionHeight()) {
-                // TODO what about players that are logged out?
-                // Track their instance in entity data, on login see if/where that instance exited?
-                // Track logged out players in the instance, and add it to a map that we check on login that has the destination position?
                 SpaceTransitionHandler.exitDeepSpace(server, lastOrbiting, new TimeStampedPVCoordinates(lastTime, lastPosition, Vector3D.ZERO),
                         this, () -> manager.retireInstance(this.getId()));
                 isProcessingRetirement = true;
             }
         }
-        // there is a shortcircuiting return statement above, do not add things down here.
+        if (!isProcessingRetirement && manager.realtimeClock(10, 10)) {
+            // check for whether we are completely empty and can retire
+            if (unloadedSublevels.isEmpty() && offlinePlayers.isEmpty()) {
+                AtomicBoolean flag = new AtomicBoolean(true);
+                collectLoadedSublevels(server, l -> flag.set(false));
+                collectOnlinePlayers(server, p -> flag.set(false));
+                if (flag.get()) {
+                    isProcessingRetirement = true;
+                    manager.retireInstance(this.getId());
+                }
+            }
+        }
     }
 
     public Stream<ChunkPos> interiorPositions() {
@@ -208,7 +235,6 @@ public final class DeepSpaceInstance {
     }
 
     public void applyVelocity(UUID id, Vector3dc velocity, double mass) {
-        knownSublevels.add(id);
         pendingPhysics.compute(id, (k, v) -> {
             if (v == null) {
                 return DoubleObjectPair.of(mass, new Vector3d(velocity));
@@ -232,5 +258,49 @@ public final class DeepSpaceInstance {
 
     public void forceClientSync() {
         this.forceClientSync = true;
+    }
+
+    public void trackUnloadingSublevel(ServerSubLevel subLevel) {
+        handlePointerInformation(subLevel.getUniqueId(), subLevel.getLastSerializationPointer());
+        //noinspection ConstantValue
+        if ((Object) SubLevelContainer.getContainer(subLevel.getLevel()).getHoldingChunkMap()
+                .getHoldingSubLevel(subLevel.getUniqueId()) instanceof PointerListenable listenable) {
+            listenable.rocketnautics$addListener(this::handlePointerInformation);
+        }
+    }
+
+    private void handlePointerInformation(UUID uuid, @Nullable GlobalSavedSubLevelPointer pointer) {
+        unloadedSublevels.put(uuid, Optional.ofNullable(pointer));
+    }
+
+    public void stopTrackingSublevel(SubLevel subLevel) {
+        unloadedSublevels.remove(subLevel.getUniqueId());
+    }
+
+    public Map<UUID, Optional<GlobalSavedSubLevelPointer>> getUnloadedSublevels() {
+        return unloadedSublevels;
+    }
+
+    public void trackOfflinePlayer(Player player) {
+        offlinePlayers.put(player.getUUID(), player.position());
+    }
+
+    public void stopTrackingOfflinePlayer(Player player) {
+        offlinePlayers.remove(player.getUUID());
+    }
+
+    public Map<UUID, Vec3> getOfflinePlayers() {
+        return offlinePlayers;
+    }
+
+    public void collectLoadedSublevels(MinecraftServer server, Consumer<SubLevel> consumer) {
+        SubLevelContainer.getContainer(server.getLevel(RocketDimensions.DEEP_SPACE)).getAllSubLevels()
+                .stream().filter(l -> boundingBox().contains(l.logicalPose().position().x(), l.logicalPose().position().y(), l.logicalPose().position().z()))
+                .forEach(consumer);
+    }
+
+    public void collectOnlinePlayers(MinecraftServer server, Consumer<ServerPlayer> consumer) {
+        server.getLevel(RocketDimensions.DEEP_SPACE).players()
+                .stream().filter(p -> boundingBox().contains(p.position())).forEach(consumer);
     }
 }
