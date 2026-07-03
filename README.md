@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Create: Cosmonautics" width="600">
+  <img src="logo.png" alt="Create: Cosmonautics" width="800">
 </p>
 
 # Create: Cosmonautics
