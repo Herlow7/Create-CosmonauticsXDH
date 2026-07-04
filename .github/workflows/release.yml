@@ -1,45 +1,73 @@
 name: Create Release and Notify Discord
 
 on:
-  push:
-    tags:
-      - 'v*' # Срабатывает на теги типа v1.3.1
+  release:
+    types: [published]
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+          java-version: "21"
+          distribution: "temurin"
+          cache: "gradle"
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: chmod +x ./gradlew && ./gradlew build
 
-      - name: Create GitHub Release
-        id: create_release
+      - name: Upload JAR to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: build/libs/*.jar
-          draft: false
-          prerelease: false
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Notify Discord
-        uses: rjstone/discord-webhook-notify@v1
-        if: success()
+      - name: Publish update to CurseForge
+        id: publish_curseforge
+        uses: Kir-Antipov/mc-publish@v3.3
         with:
-          severity: info
-          details: "🚀 **New Release: ${{ github.ref_name }}**\n\nDownload it here: ${{ steps.create_release.outputs.url }}"
-          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+          curseforge-id: "1595491"
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
+
+      # - name: Publish update to Modrinth
+      #   id: publish_modrinth
+      #   uses: Kir-Antipov/mc-publish@v3.3
+      #   with:
+      #     modrinth-id: "micg1iTH"
+      #     modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+      #     version-type: ${{ github.event.release.prerelease && 'beta' || 'release' }}
+
+      - name: Send Discord Notification
+        if: success()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RELEASE_NAME: ${{ github.event.release.name }}
+          CHANGELOG: ${{ github.event.release.body }}
+          MODRINTH_URL: ${{ steps.publish_modrinth.outputs.modrinth-url }}
+          CURSEFORGE_FILE_ID: ${{ steps.publish_curseforge.outputs.curseforge-version }}
+        run: |
+          CF_URL="https://www.curseforge.com/projects/1595491/files/$CURSEFORGE_FILE_ID"
+          jq -n \
+            --arg title "$RELEASE_NAME" \
+            --arg desc "$CHANGELOG" \
+            --arg mr_url "$MODRINTH_URL" \
+            --arg cf_url "$CF_URL" \
+            '{
+              embeds: [{
+                title: $title,
+                description: ($desc + "\n\n**Download Update:**\n[Modrinth](" + $mr_url + ") | [CurseForge](" + $cf_url + ")"),
+                color: 3447003
+              }]
+            }' > payload.json
+
+          curl -H "Content-Type: application/json" -d @payload.json $DISCORD_WEBHOOK_URL
