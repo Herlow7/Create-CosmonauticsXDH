@@ -3,3 +3,8 @@ The Cosmonautics universe is loaded dynamically from JSON files at runtime, allo
 
 The pages below detail how to customize the universe components currently supported by Cosmonautics:
 - [Cube Planets](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Cube-Planets)
+- [Celestial Positions](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Celestial-Positions)
+- [Celestial Rotations](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Celestial-Rotations)
+- [Common Types](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Common-Types)
+- [Cube Planets](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Cube-Planets)
+- [Texture Definition](https://github.com/CosmonauticsTeam/Create-Cosmonautics/wiki/Texture-Definition)
