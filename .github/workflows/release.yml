@@ -53,19 +53,24 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           RELEASE_NAME: ${{ github.event.release.name }}
           CHANGELOG: ${{ github.event.release.body }}
+          GITHUB_URL: ${{ github.event.release.html_url }}
           MODRINTH_URL: ${{ steps.publish_modrinth.outputs.modrinth-url }}
           CURSEFORGE_FILE_ID: ${{ steps.publish_curseforge.outputs.curseforge-version }}
         run: |
           CF_URL="https://www.curseforge.com/projects/1595491/files/$CURSEFORGE_FILE_ID"
+
           jq -n \
+            --arg ping "<@&1504169248224706691>" \
             --arg title "$RELEASE_NAME" \
             --arg desc "$CHANGELOG" \
+            --arg gh_url "$GITHUB_URL" \
             --arg mr_url "$MODRINTH_URL" \
             --arg cf_url "$CF_URL" \
             '{
+              content: $ping,
               embeds: [{
                 title: $title,
-                description: ($desc + "\n\n**Download Update:**\n[Modrinth](" + $mr_url + ") | [CurseForge](" + $cf_url + ")"),
+                description: ($desc + "\n\n**Download Update:**\n[GitHub](" + $gh_url + ") | [Modrinth](" + $mr_url + ") | [CurseForge](" + $cf_url + ")"),
                 color: 3447003
               }]
             }' > payload.json
