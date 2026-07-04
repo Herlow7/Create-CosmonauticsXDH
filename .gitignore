@@ -50,6 +50,7 @@ scratch/
 compile_output.txt
 .editorconfig
 .idea
+.vscode
 .eclipse
 .editorconfig
 **/.cache
