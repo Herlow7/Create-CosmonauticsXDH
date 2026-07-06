@@ -101,7 +101,12 @@ public class RocketNautics {
 
         modEventBus.addListener(this::setup);
         NeoForge.EVENT_BUS.register(this);
-
+if (net.neoforged.fml.ModList.get().isLoaded("distant_horizons")) {
+            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                net.neoforged.neoforge.client.event.ClientTickEvent.Post.class, 
+                DistantHorizonsCompat::onClientTick
+            );
+        }
         // Initialize physics and game mechanics handlers
         GlobalSpacePhysicsHandler.init();
         dev.devce.rocketnautics.content.physics.AsteroidSpawner.init();
